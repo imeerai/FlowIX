@@ -1,5 +1,9 @@
 {
   "chat.tools.terminal.autoApprove": {
     "npm run build": true
-  }
+  },
+  "javascript.suggest.autoImports": true,
+  "typescript.suggest.autoImports": true,
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.updateImportsOnFileMove.enabled": "always"
 }
