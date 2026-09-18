@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage.jsx";
 import BuilderPage from "./pages/BuilderPage.jsx";
 import PreviewPage from "./pages/PreviewPage.jsx";
 
+/** Renders the route tree for guest-only and authenticated pages. */
 const App = () => {
   return (
     <Routes>

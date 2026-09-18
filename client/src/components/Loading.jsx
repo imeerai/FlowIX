@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 
+/** Renders a full-screen loading indicator. */
 function Loading() {
   return (
     <div className="h-screen flex items-center justify-center bg-white">
