@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import AuthPage from "./pages/AuthPage.jsx";
 import { AuthLayout, GuestLayout } from "./pages/Layout.jsx";
 import HomePage from "./pages/HomePage.jsx";
@@ -21,6 +21,8 @@ const App = () => {
         <Route path="/builder/:id" element={<BuilderPage />} />
         <Route path="/preview/:id" element={<PreviewPage />} />
       </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
