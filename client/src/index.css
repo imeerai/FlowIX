@@ -18,6 +18,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+form button[type="submit"] {
+  background: linear-gradient(to bottom right, #dc2626, #d97706) !important;
+  transition:
+    transform 150ms ease,
+    filter 150ms ease !important;
+}
+
+form button[type="submit"]:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: scale(1.01);
+}
+
 /* Scrollbars */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
