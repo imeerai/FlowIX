@@ -6,5 +6,5 @@
   "typescript.suggest.autoImports": true,
   "javascript.updateImportsOnFileMove.enabled": "always",
   "typescript.updateImportsOnFileMove.enabled": "always",
-  "cSpell.words": ["Meer"]
+  "cSpell.words": ["glassmorphic", "Meer"]
 }

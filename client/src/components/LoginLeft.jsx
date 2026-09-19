@@ -1,21 +1,14 @@
-import React from "react";
+import Logo from "./logo.jsx";
+import NeatGradientBackground from "./NeatGradientBackground.jsx";
 
 const LoginLeft = () => {
   return (
-    <div className="hidden lg:flex lg:w-[40%] bg-[url('/bg-img.png')] bg-cover bg-center bg-no-repeat flex-col justify-between p-12 shrink-0 select-none">
-      <div className="flex items-center gap-3 mb-12">
-        <img src="/logo.png" alt="Logo" className="size-9.5" />
-        <span
-          className="text-4xl tracking-[-0.06em]"
-          style={{ fontFamily: "system-ui" }}
-        >
-          <span className="text-white">Flow</span>
-          <span className="text-[#ff6b1a] ml-[4px]" style={{ fontWeight: 600 }}>
-            IX
-          </span>
-        </span>
+    <div className="relative hidden overflow-hidden lg:flex lg:w-[40%] flex-col justify-between p-12 shrink-0 select-none">
+      <NeatGradientBackground className="pointer-events-none absolute inset-0 z-0 h-full w-full" />
+      <div className="relative z-10 flex items-center gap-3 mb-12">
+        <Logo />
       </div>
-      <div>
+      <div className="relative z-10">
         <h2 className="text-white text-3xl font-medium leading-snug mb-3 tracking-tight">
           Build your presence on web
         </h2>
