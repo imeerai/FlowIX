@@ -144,7 +144,7 @@ export function AppContextProvider({ children }) {
       activeProject.status === "generating" ||
       activeProject.status === "revising";
 
-    if (!isOngoing) {
+    if (isOngoing) {
       setChatLoading(true);
       const interval = setInterval(() => {
         loadProject(activeProject._id, true);
