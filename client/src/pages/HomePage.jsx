@@ -1,15 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAppContext } from "../context/AppContext.jsx";
 import NeatGradientBackground from "../components/NeatGradientBackground.jsx";
 import PromptInput from "../components/PromptInput.jsx";
 import { homeTags } from "../assets/assets.js";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowRight, Clock3, Trash2 } from "lucide-react";
 import moment from "moment";
 
 /** Renders the home page placeholder. */
 function HomePage() {
-  const navigate = useNavigate();
+  const scrollContainerRef = useRef(null);
 
   const {
     user,
@@ -17,7 +17,6 @@ function HomePage() {
     loadingProjects,
     generatingProject,
     loadProjects,
-    loadProject,
     handleGenerate,
     handleDelete,
     logout,
@@ -28,8 +27,11 @@ function HomePage() {
   }, [loadProjects, user]);
 
   return (
-    <div className="relative h-screen overflow-y-scroll text-white font-sans">
-      <NeatGradientBackground />
+    <div
+      ref={scrollContainerRef}
+      className="relative h-screen overflow-y-scroll text-white font-sans"
+    >
+      <NeatGradientBackground scrollContainerRef={scrollContainerRef} />
       {/* Navbar */}
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 backdrop-blur-md">
         <div className="flex items-center gap-2">
@@ -121,42 +123,40 @@ function HomePage() {
                   <div
                     key={project._id}
                     className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between gap-4 group hover:border-white/20 hover:bg-white/10 cursor-pointer backdrop-blur-md transition-all"
-                    onClick={() => navigate(`/builder/${project._id}`)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {project.name}
-                      </p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-zinc-300 flex items-center gap-1">
-                          <Clock3 size={10} />
-                          {moment(
-                            project.updatedAt || project.createdAt,
-                          ).fromNow()}
-                        </span>
-                        <span className="text-xs text-white/60 font-medium">
-                          v{project.version}
-                        </span>
+                    <Link
+                      to={`/builder/${project._id}`}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">
+                          {project.name}
+                        </p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-xs text-zinc-300 flex items-center gap-1">
+                            <Clock3 size={10} />
+                            {moment(
+                              project.updatedAt || project.createdAt,
+                            ).fromNow()}
+                          </span>
+                          <span className="text-xs text-white/60 font-medium">
+                            v{project.version}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(project._id);
-                        }}
-                        aria-label={`Delete ${project.name}`}
-                        className="p-1.5 rounded-md text-zinc-200 hover:text-red-400 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={14} />
-                      </button>
                       <ArrowRight
                         size={14}
                         className="text-zinc-200 group-hover:text-white"
                       />
-                    </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(project._id)}
+                      aria-label={`Delete ${project.name}`}
+                      className="p-1.5 rounded-md text-zinc-200 hover:text-red-400 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
