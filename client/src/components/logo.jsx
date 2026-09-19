@@ -1,7 +1,7 @@
 function Logo() {
   return (
     <>
-      <img src="/logo.png" alt="Logo" className="size-9.5" />
+      <img src="/logo.png" alt="" className="size-9.5" />
       <span
         className="text-4xl font-semibold tracking-[-0.06em]"
         style={{ fontFamily: "system-ui" }}
