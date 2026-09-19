@@ -4,24 +4,28 @@ import { AuthLayout, GuestLayout } from "./pages/Layout.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import BuilderPage from "./pages/BuilderPage.jsx";
 import PreviewPage from "./pages/PreviewPage.jsx";
+import { Toaster } from "react-hot-toast";
 
 /** Renders the route tree for guest-only and authenticated pages. */
 const App = () => {
   return (
-    <Routes>
-      {/* login routes */}
-      <Route element={<GuestLayout />}>
-        <Route path="/login" element={<AuthPage mode="login" />} />
-        <Route path="/register" element={<AuthPage mode="register" />} />
-      </Route>
+    <>
+      <Toaster />
+      <Routes>
+        {/* login routes */}
+        <Route element={<GuestLayout />}>
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<AuthPage mode="register" />} />
+        </Route>
 
-      {/* protected  routes */}
-      <Route element={<AuthLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/builder/:id" element={<BuilderPage />} />
-        <Route path="/preview/:id" element={<PreviewPage />} />
-      </Route>
-    </Routes>
+        {/* protected  routes */}
+        <Route element={<AuthLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/builder/:id" element={<BuilderPage />} />
+          <Route path="/preview/:id" element={<PreviewPage />} />
+        </Route>
+      </Routes>
+    </>
   );
 };
 
