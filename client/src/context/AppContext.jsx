@@ -212,6 +212,7 @@ export function AppContextProvider({ children }) {
         setActiveFile,
         showCode,
         setShowCode,
+        logout,
       }}
     >
       {children}
