@@ -4,7 +4,7 @@ import api from "../api/api";
 import Loading from "../components/Loading";
 import PreviewPanel from "../components/PreviewPanel";
 
-/** Renders a published project from its public route. */
+/** Loads the public route's project and renders its read-only preview or status. */
 function PublishPage() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
@@ -13,6 +13,7 @@ function PublishPage() {
   useEffect(() => {
     let ignore = false;
 
+    /** Loads the published project and captures request or publication errors for display. */
     const loadPublishedProject = async () => {
       try {
         const { data } = await api.get(`/api/projects/public/${id}`);

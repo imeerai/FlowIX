@@ -13,6 +13,7 @@ import AgentProgressDashboard from "../components/AgentProgressDashboard";
 import PublishModal from "../components/PublishModal";
 import { exportProjectZip } from "../utils/exportProject";
 
+/** Loads the route's project and renders the builder once it is available. */
 const BuilderPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
