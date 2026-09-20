@@ -109,7 +109,7 @@ const gradientConfig = {
   cameraZoom: 1,
 };
 
-function NeatGradientBackground({ className }) {
+function NeatGradientBackground({ className, scrollContainerRef }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -120,17 +120,19 @@ function NeatGradientBackground({ className }) {
       ...gradientConfig,
     });
 
+    const scrollTarget = scrollContainerRef?.current || window;
     const handleScroll = () => {
-      gradient.yOffset = window.scrollY;
+      gradient.yOffset =
+        scrollTarget === window ? window.scrollY : scrollTarget.scrollTop;
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      scrollTarget.removeEventListener("scroll", handleScroll);
       gradient.destroy();
     };
-  }, []);
+  }, [scrollContainerRef]);
 
   return (
     <canvas
