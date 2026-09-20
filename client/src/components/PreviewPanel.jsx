@@ -47,7 +47,7 @@ function SandpackFileWatcher({ onLiveFilesChange }) {
   return null;
 }
 
-const PreviewPanel = ({ project, activeFile, showCode }) => {
+const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
   const [showErrorOverlay, setShowErrorOverlay] = useState(true);
 
   //keep local state of file that updates as user types
@@ -131,7 +131,9 @@ const PreviewPanel = ({ project, activeFile, showCode }) => {
           },
         }}
       >
-        <SandpackFileWatcher onLiveFilesChange={handleLiveFilesChange} />
+        {!readOnly && (
+          <SandpackFileWatcher onLiveFilesChange={handleLiveFilesChange} />
+        )}
         <SandPackErrorMonitor onErrorChange={setShowErrorOverlay} />
         <SandpackLayout
           style={{

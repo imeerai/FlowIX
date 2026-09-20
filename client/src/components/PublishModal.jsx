@@ -3,10 +3,15 @@ import toast from "react-hot-toast";
 import { X } from "lucide-react";
 
 const PublishModal = ({ publishUrl, onClose }) => {
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!publishUrl) return;
-    navigator.clipboard.writeText(publishUrl);
-    toast.success("Publish link copied to clipboard");
+    try {
+      await navigator.clipboard.writeText(publishUrl);
+      toast.success("Publish link copied to clipboard");
+    } catch (error) {
+      console.error("Failed to copy publish link", error);
+      toast.error("Failed to copy publish link");
+    }
   };
   return (
     <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-xs flex items-center justify-center z-50">

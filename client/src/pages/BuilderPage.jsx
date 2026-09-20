@@ -22,7 +22,7 @@ const BuilderPage = () => {
 
   const {
     activeProject,
-    loadingActiveProject,
+    LoadingActiveProject: loadingActiveProject,
     activeFile,
     showCode,
     setActiveFile,

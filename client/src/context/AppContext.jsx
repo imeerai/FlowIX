@@ -240,7 +240,7 @@ export function AppContextProvider({ children }) {
   const updateProjectFiles = useCallback(
     async (params) => {
       if (!activeProject || !user) return;
-      debouncedSave(files, activeProject._id);
+      debouncedSave(params, activeProject._id);
     },
     [activeProject, user, debouncedSave],
   );
@@ -269,6 +269,7 @@ export function AppContextProvider({ children }) {
         setShowCode,
         logout,
         updateProjectFiles,
+        handleChat,
       }}
     >
       {children}
