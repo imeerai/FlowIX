@@ -2,7 +2,9 @@ import React from "react";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
 
+/** Displays a published URL with controls for copying or opening it. */
 const PublishModal = ({ publishUrl, onClose }) => {
+  /** Copies an available publish URL and reports clipboard success or failure. */
   const handleCopyLink = async () => {
     if (!publishUrl) return;
     try {

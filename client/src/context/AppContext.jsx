@@ -12,7 +12,7 @@ import debounce from "lodash.debounce";
 
 const AppContext = createContext(undefined);
 
-/** Provides the current user and initial session-loading state to descendants. */
+/** Provides authentication, project, editor, and chat state and actions to descendants. */
 export function AppContextProvider({ children }) {
   const navigate = useNavigate();
 
@@ -237,6 +237,7 @@ export function AppContextProvider({ children }) {
     };
   }, [debouncedSave]);
 
+  /** Schedules the supplied file map for the active project after the save debounce. */
   const updateProjectFiles = useCallback(
     async (params) => {
       if (!activeProject || !user) return;

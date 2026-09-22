@@ -47,6 +47,7 @@ function SandpackFileWatcher({ onLiveFilesChange }) {
   return null;
 }
 
+/** Renders project files in Sandpack and disables file synchronization in read-only mode. */
 const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
   const [showErrorOverlay, setShowErrorOverlay] = useState(true);
 
