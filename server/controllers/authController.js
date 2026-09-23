@@ -1,8 +1,6 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
-import "dotenv/config";
-
-const JWT_SECRET = process.env.JWT_SECRET || "hahahahhahahhahah";
+import { JWT_SECRET } from "../config/auth.js";
 
 
 // Helper function to set cookie

@@ -173,8 +173,10 @@ export async function generateProject(prompt, callbacks) {
       `[AI] Failed to generate ${pendingFiles.length} files after all retry rounds: ${failedPaths}`,
     );
 
-    if (pendingFiles.some((f) => f.path === "/App.js")) {
-      for (const file of pendingFiles) {
+    if (pendingFiles.some((file) => file.path === "/App.js")) {
+      throw new Error("AI did not generate /App.js entry point");
+    }
+    for (const file of pendingFiles) {
         const ext = file.path.split(".").pop()?.toLowerCase();
 
         if (ext === "css") {
@@ -193,7 +195,9 @@ export async function generateProject(prompt, callbacks) {
             "  );\n" +
             "}\n";
         }
-      }
+        if (callbacks?.onFileComplete) {
+          await callbacks.onFileComplete(file.path, files[file.path]);
+        }
     }
   }
 

@@ -11,6 +11,7 @@ await connectDB();
 
 app.use(cors({ origin: process.env.ORIGINS.split(","), credentials: true }));
 app.use(cookieParser());
+app.put("/api/projects/:id/files", express.json({ limit: "5mb" }));
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -21,8 +22,13 @@ app.use("/api/projects", projectRouter);
 
 //centralized error handling middleware
 app.use((err, _req, res, _next) => {
-  console.error(`[ERROR]: ${err.message}`);
-  res.status(500).json({ error: err.message });
+  console.error("[ERROR]:", err);
+  const status = err.status ?? err.statusCode;
+  const httpStatus =
+    Number.isInteger(status) && status >= 400 && status < 600 ? status : 500;
+  res.status(httpStatus).json({
+    error: httpStatus < 500 ? "Invalid request" : "Internal server error",
+  });
 });
 
 const PORT = process.env.PORT || 5000;

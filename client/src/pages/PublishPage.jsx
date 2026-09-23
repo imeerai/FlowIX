@@ -5,14 +5,14 @@ import api from "../api/api";
 import FullPagePreview from "../components/FullPagePreview";
 import Loading from "../components/Loading";
 
-const PublishPage = () => {
-  const { id } = useParams();
+const PublishedProject = ({ id }) => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
+    let active = true;
 
     const fetchPublishProject = async () => {
       try {
@@ -24,8 +24,9 @@ const PublishPage = () => {
           );
         }
 
-        setProject(data);
+        if (active) setProject(data);
       } catch (err) {
+        if (!active) return;
         console.error("Failed to load public project", err);
         setError(
           err?.response?.data?.error ||
@@ -33,14 +34,17 @@ const PublishPage = () => {
             "This website is not available or is not published yet.",
         );
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchPublishProject();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (loading) {
+  if (id && loading) {
     return <Loading />;
   }
 
@@ -67,6 +71,11 @@ const PublishPage = () => {
   }
 
   return <FullPagePreview files={project.files} />;
+};
+
+const PublishPage = () => {
+  const { id } = useParams();
+  return <PublishedProject key={id} id={id} />;
 };
 
 export default PublishPage;

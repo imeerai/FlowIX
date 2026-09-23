@@ -22,16 +22,20 @@ export async function chat(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const project = await Project.findOne({
-    _id: req.params.id,
-    owner: req.user.userId,
-  });
+  const project = await Project.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      owner: req.user.userId,
+      status: { $in: ["completed", "failed"] },
+    },
+    { $set: { status: "revising" } },
+    { new: true },
+  );
 
   if (!project) {
-    return res.status(404).json({ error: "Project not found" });
+    return res.status(409).json({ error: "Project is not ready for revision" });
   }
-  // set status to revising and save user prompt immediately
-  project.status = "revising";
+  // save user prompt after claiming the revision
   project.messages.push({
     role: "user",
     content: prompt,

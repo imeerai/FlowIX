@@ -1,5 +1,6 @@
 import Project from "../models/Project.js";
 import crypto from "crypto";
+import { generateProject } from "../services/ai.js";
 
 function hashContent(content) {
   // Simple hash function for demonstration purposes
@@ -32,7 +33,7 @@ export async function createProject(req, res) {
         content: "Planning project structure...",
       },
     ],
-    version: "0",
+    version: 0,
     owner: req.user.userId,
     status: "pending",
     filesPlanned: [],
@@ -75,11 +76,12 @@ export async function createProject(req, res) {
 // Background worker to progressively generate files
 // and update database in realtime
 async function runBackgroundGeneration(projectId, prompt) {
+  let fileUpdateQueue = Promise.resolve();
   try {
     console.log(
       `[BACKGROUND AI] Starting generation for project ${projectId}...`,
     );
-    const result = await generateProjectFiles(prompt, {
+    const result = await generateProject(prompt, {
       onPlan: async (plan) => {
         console.log(
           `[BACKGROUND AI] Plan created for project ${projectId}. Planned files: ${plan.files.length} files`,
@@ -88,7 +90,7 @@ async function runBackgroundGeneration(projectId, prompt) {
           .map((f) => `- \` ${f.path}\`: ${f.description}`)
           .join("\n");
         await Project.findByIdAndUpdate(projectId, {
-          name: plan.name || "Generated Project",
+          name: plan.projectName || "Generated Project",
           status: "generating",
           filesPlanned: plan.files,
           $push: {
@@ -112,20 +114,24 @@ async function runBackgroundGeneration(projectId, prompt) {
         console.log(
           `[BACKGROUND AI] Completed generation of file ${path} for project ${projectId}`,
         );
-        const project = await Project.findById(projectId);
-        if (project) {
-          project.files = project.files || {};
-          project.files[path] = { content: code, hash: hashContent(code) };
-          project.filesGenerated = [...(project.filesGenerated || []), path];
-          project.messages.push({
-            role: "assistant",
-            content: `File generated: \`${path}\``,
-            timestamp: new Date(),
-          });
-          project.currentFile = null;
-          project.markModified("files");
-          await project.save();
-        }
+        const update = fileUpdateQueue.then(async () => {
+          const project = await Project.findById(projectId);
+          if (project) {
+            project.files = project.files || {};
+            project.files[path] = { content: code, hash: hashContent(code) };
+            project.filesGenerated = [...(project.filesGenerated || []), path];
+            project.messages.push({
+              role: "assistant",
+              content: `File generated: \`${path}\``,
+              timestamp: new Date(),
+            });
+            project.currentFile = null;
+            project.markModified("files");
+            await project.save();
+          }
+        });
+        fileUpdateQueue = update.catch(() => {});
+        await update;
       },
     });
     console.log(
@@ -137,7 +143,7 @@ async function runBackgroundGeneration(projectId, prompt) {
       project.status = "completed";
       project.version = 1;
       if (result.description) {
-        project.name = result.description;
+        project.description = result.description;
       }
       project.messages.push({
         role: "assistant",
@@ -362,8 +368,8 @@ export async function getPublicProject(req, res) {
     _id: project._id,
     name: project.name,
     description: project.description,
+    published: project.published,
     files: filesObj,
-    messages: project.messages,
     version: project.version,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,

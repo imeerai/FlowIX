@@ -50,8 +50,8 @@ const ProjectSchema = new mongoose.Schema(
       default: [],
     },
     version: {
-      type: String,
-      default: "0",
+      type: Number,
+      default: 0,
     },
     owner: {
       type: Schema.Types.ObjectId,

@@ -8,7 +8,7 @@ const PreviewPage = () => {
   const { id } = useParams();
   const {
     activeProject: project,
-    loadingActiveProject: loading,
+    LoadingActiveProject: loading,
     loadProject,
   } = useAppContext();
 

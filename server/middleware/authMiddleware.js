@@ -1,7 +1,5 @@
 import jwt from "jsonwebtoken";
-import "dotenv/config";
-
-const JWT_SECRET = process.env.JWT_SECRET || "hahahahhahahhahah";
+import { JWT_SECRET } from "../config/auth.js";
 
 export function authMiddleware(req, res, next) {
   const token = req.cookies.token;

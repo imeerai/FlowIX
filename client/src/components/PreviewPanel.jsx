@@ -100,7 +100,7 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
         customSetup={{ dependencies }}
         options={{
           externalResources: [
-            "https://cdn.tailwindcss.com",
+            "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
             "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css",
           ],
           classes: {

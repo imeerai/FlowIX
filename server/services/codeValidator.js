@@ -4,6 +4,53 @@
 // Void HTML elements that must be self-closed in JSX
 const VOID_ELEMENTS = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"];
 
+function selfCloseVoidElements(code, filePath, warnings, suffix) {
+    const tagPattern = new RegExp(`<(${VOID_ELEMENTS.join("|")})(?=[\\s/>])`, "g");
+    const changedTags = new Set();
+    let result = "";
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tagPattern.exec(code))) {
+        let depth = 0;
+        let quote = null;
+        let end = -1;
+
+        for (let index = tagPattern.lastIndex; index < code.length; index++) {
+            const char = code[index];
+            if (quote) {
+                if (char === "\\") index++;
+                else if (char === quote) quote = null;
+            } else if (char === "'" || char === '"' || char === "`") {
+                quote = char;
+            } else if (char === "{") {
+                depth++;
+            } else if (char === "}") {
+                if (depth === 0) break;
+                depth--;
+            } else if (char === "<" && depth === 0) {
+                break;
+            } else if (char === ">" && depth === 0) {
+                end = index;
+                break;
+            }
+        }
+
+        if (end === -1) continue;
+        tagPattern.lastIndex = end + 1;
+        const opening = code.slice(match.index, end);
+        if (/\/\s*$/.test(opening)) continue;
+        result += code.slice(lastIndex, match.index) + opening.trimEnd() + " />";
+        lastIndex = end + 1;
+        changedTags.add(match[1]);
+    }
+
+    for (const tag of changedTags) {
+        warnings.push(`${filePath}: Self-closed <${tag}> ${suffix}`);
+    }
+    return result + code.slice(lastIndex);
+}
+
 // Validate and auto-fix common AI-generated code issues
 export function validateAndFixCode(code, filePath, context) {
     const warnings = [];
@@ -49,14 +96,7 @@ export function validateAndFixCode(code, filePath, context) {
     }
 
     // 4. Self-close void elements that aren't self-closed
-    for (const tag of VOID_ELEMENTS) {
-        // Match <tag ... > that is NOT already self-closed (no / before >)
-        const voidRegex = new RegExp(`<${tag}(\\s[^>]*?)?(?<!/)>`, "gi");
-        if (voidRegex.test(code)) {
-            code = code.replace(new RegExp(`<${tag}(\\s[^>]*?)?(?<!/)>`, "gi"), (match, attrs) => `<${tag}${attrs || ""} />`);
-            warnings.push(`${filePath}: Self-closed <${tag}> elements`);
-        }
-    }
+    code = selfCloseVoidElements(code, filePath, warnings, "elements");
 
     // 5. Ensure exactly one default export exists
     const defaultExportCount = (code.match(/export\s+default\s+/g) || []).length;
@@ -148,13 +188,7 @@ export function validateRevisionContent(content, filePath, op) {
     }
 
     // Self-close void elements
-    for (const tag of VOID_ELEMENTS) {
-        const voidRegex = new RegExp(`<${tag}(\\s[^>]*?)?(?<!/)>`, "gi");
-        if (voidRegex.test(content)) {
-            content = content.replace(new RegExp(`<${tag}(\\s[^>]*?)?(?<!/)>`, "gi"), (match, attrs) => `<${tag}${attrs || ""} />`);
-            warnings.push(`${filePath}: Self-closed <${tag}> in replacement`);
-        }
-    }
+    content = selfCloseVoidElements(content, filePath, warnings, "in replacement");
 
     return { content, warnings };
 }
