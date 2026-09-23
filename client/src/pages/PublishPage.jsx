@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -60,5 +59,14 @@ const PublishPage = () => {
           {error || "This website is not available or is not published yet."}
         </p>
 
-        <div className="text-
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+          FlowIX
+        </div>
+      </div>
+    );
+  }
 
+  return <FullPagePreview files={project.files} />;
+};
+
+export default PublishPage;

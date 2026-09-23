@@ -4,9 +4,6 @@ import "dotenv/config";
 
 const JWT_SECRET = process.env.JWT_SECRET || "hahahahhahahhahah";
 
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined in .env");
-}
 
 // Helper function to set cookie
 const setSessionCookie = (res, payload) => {

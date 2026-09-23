@@ -4,9 +4,10 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 import authRouter from "./routes/authRoutes.js";
+import projectRouter from "./routes/projectRoutes.js";
 
 const app = express();
-connectDB();
+await connectDB();
 
 app.use(cors({ origin: process.env.ORIGINS.split(","), credentials: true }));
 app.use(cookieParser());
@@ -16,6 +17,7 @@ app.get("/", (req, res) => {
   res.send("server is live!!!");
 });
 app.use("/api/auth", authRouter);
+app.use("/api/projects", projectRouter);
 
 //centralized error handling middleware
 app.use((err, _req, res, _next) => {
