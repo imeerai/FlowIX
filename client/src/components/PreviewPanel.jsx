@@ -87,7 +87,6 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
   }, [liveFiles, activeFile]);
 
   // detect dependencies from import statements using liveFiles
-
   const dependencies = useMemo(() => {
     return detectDependencies(liveFiles);
   }, [liveFiles]);

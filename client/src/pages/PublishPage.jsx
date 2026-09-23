@@ -1,59 +1,64 @@
+
 import React, { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { useParams } from "react-router-dom";
 import api from "../api/api";
+import FullPagePreview from "../components/FullPagePreview";
 import Loading from "../components/Loading";
-import PreviewPanel from "../components/PreviewPanel";
 
-/** Loads the public route's project and renders its read-only preview or status. */
-function PublishPage() {
+const PublishPage = () => {
   const { id } = useParams();
   const [project, setProject] = useState(null);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let ignore = false;
+    if (!id) return;
 
-    /** Loads the published project and captures request or publication errors for display. */
-    const loadPublishedProject = async () => {
+    const fetchPublishProject = async () => {
       try {
         const { data } = await api.get(`/api/projects/public/${id}`);
+
         if (!data?.published) {
-          throw new Error("Website unavailable or not published yet");
-        }
-        if (!ignore) setProject(data);
-      } catch (requestError) {
-        console.error("Failed to load published project", requestError);
-        if (!ignore) {
-          setError(
-            requestError?.response?.data?.error ||
-              requestError.message ||
-              "Website unavailable or not published yet",
+          throw new Error(
+            "This website is not available or is not published yet.",
           );
         }
+
+        setProject(data);
+      } catch (err) {
+        console.error("Failed to load public project", err);
+        setError(
+          err?.response?.data?.error ||
+            err?.message ||
+            "This website is not available or is not published yet.",
+        );
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadPublishedProject();
-    return () => {
-      ignore = true;
-    };
+    fetchPublishProject();
   }, [id]);
 
-  if (error) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-white px-6 text-center">
-        <p className="text-sm text-zinc-500">{error}</p>
-      </div>
-    );
+  if (loading) {
+    return <Loading />;
   }
 
-  if (!project) return <Loading />;
+  if (error || !project) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-zinc-50 px-4 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4">
+          <AlertCircle size={24} />
+        </div>
 
-  return (
-    <div className="h-screen bg-white">
-      <PreviewPanel project={project} showCode={false} readOnly />
-    </div>
-  );
-}
+        <h1 className="text-lg font-semibold text-zinc-900 mb-1.5">
+          Website unavailable
+        </h1>
 
-export default PublishPage;
+        <p className="text-sm text-zinc-500 max-w-sm leading-relaxed mb-6">
+          {error || "This website is not available or is not published yet."}
+        </p>
+
+        <div className="text-
+

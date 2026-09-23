@@ -233,13 +233,13 @@ export function AppContextProvider({ children }) {
 
   useEffect(() => {
     return () => {
-      debouncedSave.cancel();
+      debouncedSave.flush();
     };
   }, [debouncedSave]);
 
   /** Schedules the supplied file map for the active project after the save debounce. */
   const updateProjectFiles = useCallback(
-    async (params) => {
+    async (files) => {
       if (!activeProject || !user) return;
       debouncedSave(params, activeProject._id);
     },
