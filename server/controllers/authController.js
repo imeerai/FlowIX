@@ -2,7 +2,6 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/auth.js";
 
-
 // Helper function to set cookie
 const setSessionCookie = (res, payload) => {
   const token = jwt.sign(payload, JWT_SECRET, {
@@ -23,7 +22,14 @@ export async function register(req, res) {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
         error: "Please provide all required fields",
       });
@@ -74,7 +80,12 @@ export async function login(req, res) {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
         error: "Please provide all required fields",
       });
@@ -160,5 +171,27 @@ export async function me(req, res) {
     return res.status(500).json({
       error: "Something went wrong",
     });
+  }
+}
+
+export async function deleteAccount(req, res) {
+  try {
+    const user = await User.findByIdAndDelete(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Delete account error:", error);
+    return res.status(500).json({ error: "Something went wrong" });
   }
 }

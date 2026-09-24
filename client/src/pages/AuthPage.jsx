@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import LoginLeft from "../components/LoginLeft";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -97,14 +97,25 @@ const AuthPage = ({ mode }) => {
               <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">
                 Password
               </label>
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-2 py-2 border-b border-zinc-200 focus:outline-none focus:ring-zinc-950 text-sm text-zinc-900 bg-transparent placeholder-zinc-300 transition-colors"
-                placeholder="***************"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-2 pr-10 py-2 border-b border-zinc-200 focus:outline-none focus:ring-zinc-950 text-sm text-zinc-900 bg-transparent placeholder-zinc-300 transition-colors"
+                  placeholder="***************"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-0 bottom-2 text-zinc-400 hover:text-zinc-900 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"

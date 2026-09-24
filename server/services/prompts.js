@@ -1,7 +1,17 @@
 // --- System Prompts ---
 // All AI prompts are centralized here for easy editing and consistency.
 
-const BASE_SYSTEM = `You are an elite Senior Frontend Developer and UI/UX Designer with deep expertise in React and Tailwind CSS. You build world-class, production-ready websites that feel like they were crafted by a top-tier design agency — with the visual quality of Stripe, Linear, Vercel, or Loom landing pages.
+const PREVIEW_LIMITS = `
+## PREVIEW SIZE LIMITS
+- Keep every project at or below 24 source files.
+- Keep combined source code at or below 120 KB.
+- Prefer a compact implementation and reuse components instead of creating many files.
+- If the user's request would need more than these limits, simplify the implementation while preserving the core experience.
+`;
+
+const BASE_SYSTEM = `${PREVIEW_LIMITS}
+
+You are an elite Senior Frontend Developer and UI/UX Designer with deep expertise in React and Tailwind CSS. You build world-class, production-ready websites that feel like they were crafted by a top-tier design agency — with the visual quality of Stripe, Linear, Vercel, or Loom landing pages.
 
 Your output must be VISUALLY STUNNING. If the design looks generic, plain, or template-like, you have failed. Every page you generate should WOW the user immediately on first render.
 
@@ -302,25 +312,28 @@ Rules:
 - Do NOT write any code — only plan the file list`;
 
 export function buildFileCodeSystem(allFiles, alreadyGeneratedFiles) {
-    const fileList = allFiles
-        .map((f) => {
-            const impStr = f.imports && f.imports.length > 0 ? ` (Imports: ${f.imports.join(", ")})` : "";
-            const expStr = f.exports ? ` (Exports: ${f.exports})` : "";
-            return `  ${f.path}: ${f.description}${impStr}${expStr}`;
-        })
-        .join("\n");
+  const fileList = allFiles
+    .map((f) => {
+      const impStr =
+        f.imports && f.imports.length > 0
+          ? ` (Imports: ${f.imports.join(", ")})`
+          : "";
+      const expStr = f.exports ? ` (Exports: ${f.exports})` : "";
+      return `  ${f.path}: ${f.description}${impStr}${expStr}`;
+    })
+    .join("\n");
 
-    let contextStr = "";
-    if (alreadyGeneratedFiles && Object.keys(alreadyGeneratedFiles).length > 0) {
-        contextStr =
-            "\n\nCRITICAL CONTEXT — Already Generated Files:\n" +
-            "The following files have already been generated. You MUST align your exports, imports, CSS selectors, or props signatures EXACTLY with these files:\n";
-        for (const [path, code] of Object.entries(alreadyGeneratedFiles)) {
-            contextStr += `\nFile: ${path}\n\`\`\`javascript\n${code}\n\`\`\`\n`;
-        }
+  let contextStr = "";
+  if (alreadyGeneratedFiles && Object.keys(alreadyGeneratedFiles).length > 0) {
+    contextStr =
+      "\n\nCRITICAL CONTEXT — Already Generated Files:\n" +
+      "The following files have already been generated. You MUST align your exports, imports, CSS selectors, or props signatures EXACTLY with these files:\n";
+    for (const [path, code] of Object.entries(alreadyGeneratedFiles)) {
+      contextStr += `\nFile: ${path}\n\`\`\`javascript\n${code}\n\`\`\`\n`;
     }
+  }
 
-    return `${BASE_SYSTEM}
+  return `${BASE_SYSTEM}
 
 You are writing a SINGLE file for a React project.
 The full project file structure is:

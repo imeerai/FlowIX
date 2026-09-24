@@ -9,6 +9,8 @@ import {
 import { detectDependencies } from "../utils/sandpackUtils";
 import SandPackErrorMonitor from "./SandPackErrorMonitor";
 import { useAppContext } from "../context/AppContext";
+import { Loader2, RefreshCw } from "lucide-react";
+import BrandWatermark from "./BrandWatermark";
 
 //watches for file edit inside sandpack editor and saves changes to DB and live state
 function SandpackFileWatcher({ onLiveFilesChange }) {
@@ -47,9 +49,95 @@ function SandpackFileWatcher({ onLiveFilesChange }) {
   return null;
 }
 
+function SandpackRuntimeStatus({ onRetry }) {
+  const { sandpack } = useSandpack();
+  const [timedOut, setTimedOut] = useState(false);
+  const status = sandpack.status;
+  const isReady = status === "done";
+  const hasError =
+    Boolean(sandpack.error) || status === "error" || status === "timeout";
+  const runtimeError = sandpack.error?.message;
+
+  useEffect(() => {
+    if (isReady || hasError) {
+      setTimedOut(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setTimedOut(true), 30000);
+    return () => clearTimeout(timer);
+  }, [hasError, isReady, status]);
+
+  if (isReady && !hasError) return null;
+
+  const showTimeout = timedOut || hasError;
+
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 p-6">
+      <div className="max-w-sm text-center">
+        {showTimeout ? (
+          <>
+            <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+              <RefreshCw size={18} />
+            </div>
+            <h3 className="text-sm font-semibold text-zinc-900">
+              Preview is unavailable
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+              The browser preview runtime could not start. Your project is still
+              safe and can be run locally.
+            </p>
+            {runtimeError && (
+              <p className="mt-2 max-h-16 overflow-auto rounded bg-zinc-50 p-2 text-left text-[10px] text-zinc-400">
+                {runtimeError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-700 cursor-pointer"
+            >
+              <RefreshCw size={13} />
+              Try again
+            </button>
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                Run locally
+              </p>
+              <code className="mt-2 block text-[11px] leading-5 text-zinc-700">
+                npm install
+                <br />
+                npm run dev
+              </code>
+              <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+                Use Download in the header first, unzip the project, then run
+                these commands in its folder.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <Loader2
+              size={24}
+              className="mx-auto mb-3 animate-spin text-zinc-700"
+            />
+            <p className="text-sm font-medium text-zinc-800">
+              Loading preview...
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Starting the website runtime
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Renders project files in Sandpack and disables file synchronization in read-only mode. */
 const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
   const [showErrorOverlay, setShowErrorOverlay] = useState(true);
+  const [runtimeKey, setRuntimeKey] = useState(0);
 
   //keep local state of file that updates as user types
   const [liveFiles, setLiveFiles] = useState(project.files);
@@ -92,23 +180,22 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
   }, [liveFiles]);
 
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <SandpackProvider
-        key={project._id}
+        key={`${project._id}-${runtimeKey}`}
         template="react"
         files={sandpackFiles}
         customSetup={{ dependencies }}
         options={{
-          externalResources: [
-            "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
-            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css",
-          ],
+          autorun: true,
+          initMode: "immediate",
           classes: {
             "sp-wrapper": "sp-wrapper",
             "sp-layout": "sp-layout",
             "sp-preview": "sp-preview",
           },
           logLevel: 0,
+          experimental_enableServiceWorker: true,
         }}
         theme={{
           colors: {
@@ -131,6 +218,9 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
           },
         }}
       >
+        <SandpackRuntimeStatus
+          onRetry={() => setRuntimeKey((key) => key + 1)}
+        />
         {!readOnly && (
           <SandpackFileWatcher onLiveFilesChange={handleLiveFilesChange} />
         )}
@@ -162,6 +252,7 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
           />
         </SandpackLayout>
       </SandpackProvider>
+      <BrandWatermark />
     </div>
   );
 };

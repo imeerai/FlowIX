@@ -18,6 +18,7 @@ function HomePage() {
     generatingProject,
     loadProjects,
     handleGenerate,
+    cancelRequest,
     handleDelete,
     logout,
   } = useAppContext();
@@ -83,6 +84,7 @@ function HomePage() {
           <div className="w-full mt-6">
             <PromptInput
               onSubmit={handleGenerate}
+              onCancel={cancelRequest}
               loading={generatingProject}
               placeholder="Create a Portfolio Website..."
               variant="glass"

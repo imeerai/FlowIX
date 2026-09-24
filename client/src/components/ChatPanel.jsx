@@ -4,7 +4,13 @@ import { Bot, BotMessageSquare, User } from "lucide-react";
 
 import PromptInput from "./PromptInput";
 
-function ChatPanel({ messages, onSend, loading }) {
+function ChatPanel({
+  messages,
+  onSend,
+  onCancel,
+  loading,
+  disabledMessage = "",
+}) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -24,29 +30,41 @@ function ChatPanel({ messages, onSend, loading }) {
         )}
 
         {messages.map((message, index) => (
-          <div key={index}>
-            <div className="flex gap-2.5 items-start">
-              <div className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center mt-0.5 bg-zinc-50">
-                {message.role === "user" ? (
-                  <User size={14} className="text-zinc-500" />
-                ) : (
-                  <BotMessageSquare size={14} className="text-zinc-700" />
+          <div
+            key={index}
+            className={`flex items-start gap-2.5 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            {message.role !== "user" && (
+              <div className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-5 bg-zinc-100 border border-zinc-200">
+                <BotMessageSquare size={14} className="text-zinc-700" />
+              </div>
+            )}
+
+            <div
+              className={`min-w-0 max-w-[88%] ${message.role === "user" ? "items-end" : "items-start"}`}
+            >
+              <div
+                className={`flex items-center gap-1.5 mb-1 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {message.role === "user" && (
+                  <User size={12} className="text-zinc-500" />
                 )}
+                <p
+                  className={`text-[10px] font-semibold uppercase tracking-widest ${message.role === "user" ? "text-zinc-500" : "text-zinc-400"}`}
+                >
+                  {message.role === "user" ? "You" : "AI assistant"}
+                </p>
               </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-500 mb-1 uppercase tracking-wider">
-                  {message.role === "user" ? "You" : "AI"}
-                </p>
-
-                <p className="text-[13px] text-zinc-700 leading-relaxed tracking-wider whitespace-pre-wrap wrap-break-word">
-                  {message.content.split("- '/").map((text, i) => (
-                    <span key={i} className="block mt-3">
-                      <span className={i === 0 ? "hidden" : ""}>- '/</span>
-                      {text}
-                    </span>
-                  ))}
-                </p>
+              <div
+                className={`px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap wrap-break-word bg-zinc-50 text-zinc-700 border border-zinc-200 ${message.role === "user" ? "rounded-2xl rounded-tr-sm" : "rounded-2xl rounded-tl-sm"}`}
+              >
+                {message.content.split("- '/").map((text, i) => (
+                  <span key={i} className="block">
+                    <span className={i === 0 ? "hidden" : ""}>- '/</span>
+                    {text}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -79,8 +97,11 @@ function ChatPanel({ messages, onSend, loading }) {
       <div className="p-3 border-t border-zinc-200">
         <PromptInput
           onSubmit={onSend}
+          onCancel={onCancel}
           loading={loading}
-          placeholder="Ask AI to modify....."
+          disabled={Boolean(disabledMessage)}
+          disabledMessage={disabledMessage}
+          placeholder="Ask AI to modify your website..."
           autoFocus
         />
       </div>

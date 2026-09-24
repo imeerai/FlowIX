@@ -16,6 +16,10 @@ import {
   validateAndFixCode,
   validateRevisionContent,
 } from "./codeValidator.js";
+import {
+  MAX_PROJECT_FILES,
+  MAX_PROJECT_SOURCE_BYTES,
+} from "./projectLimits.js";
 
 // --- OpenRouter Model Client Setup ---
 const MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
@@ -104,6 +108,12 @@ export async function generateProject(prompt, callbacks) {
     });
   }
 
+  if (plan.files.length > MAX_PROJECT_FILES) {
+    throw new Error(
+      `The project plan has ${plan.files.length} files, but the preview supports at most ${MAX_PROJECT_FILES}. Please simplify the request.`,
+    );
+  }
+
   if (callbacks?.onPlan) {
     await callbacks.onPlan(plan);
   }
@@ -141,6 +151,17 @@ export async function generateProject(prompt, callbacks) {
             files,
           );
 
+          const generatedBytes =
+            Object.values(files).reduce(
+              (total, content) => total + Buffer.byteLength(content, "utf8"),
+              0,
+            ) + Buffer.byteLength(singleResult.code, "utf8");
+          if (generatedBytes > MAX_PROJECT_SOURCE_BYTES) {
+            throw new Error(
+              `Generated source exceeds the ${Math.round(MAX_PROJECT_SOURCE_BYTES / 1000)} KB preview limit. Please simplify the request.`,
+            );
+          }
+
           if (callbacks?.onFileComplete) {
             await callbacks.onFileComplete(file.path, singleResult.code);
           }
@@ -177,27 +198,27 @@ export async function generateProject(prompt, callbacks) {
       throw new Error("AI did not generate /App.js entry point");
     }
     for (const file of pendingFiles) {
-        const ext = file.path.split(".").pop()?.toLowerCase();
+      const ext = file.path.split(".").pop()?.toLowerCase();
 
-        if (ext === "css") {
-          files[file.path] =
-            `/* ${file.description} - Generation failed, please retry */\n`;
-        } else {
-          files[file.path] =
-            "import React from 'react';\n\n" +
-            `// This file could not be generated. Please retry.\n` +
-            `// Purpose: ${file.description}\n\n` +
-            "export default function Placeholder() {\n" +
-            "  return (\n" +
-            "    <div className='p-8 text-center text-zinc-400'>\n" +
-            "      <p>Component failed to generate. Please try again.</p>\n" +
-            "    </div>\n" +
-            "  );\n" +
-            "}\n";
-        }
-        if (callbacks?.onFileComplete) {
-          await callbacks.onFileComplete(file.path, files[file.path]);
-        }
+      if (ext === "css") {
+        files[file.path] =
+          `/* ${file.description} - Generation failed, please retry */\n`;
+      } else {
+        files[file.path] =
+          "import React from 'react';\n\n" +
+          `// This file could not be generated. Please retry.\n` +
+          `// Purpose: ${file.description}\n\n` +
+          "export default function Placeholder() {\n" +
+          "  return (\n" +
+          "    <div className='p-8 text-center text-zinc-400'>\n" +
+          "      <p>Component failed to generate. Please try again.</p>\n" +
+          "    </div>\n" +
+          "  );\n" +
+          "}\n";
+      }
+      if (callbacks?.onFileComplete) {
+        await callbacks.onFileComplete(file.path, files[file.path]);
+      }
     }
   }
 

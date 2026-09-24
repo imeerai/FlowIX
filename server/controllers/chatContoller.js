@@ -1,6 +1,8 @@
 import { Project } from "../models/Project.js";
 import { reviseProject } from "../services/ai.js";
 import { applyOperations } from "../services/diff.js";
+import { getProjectLimitError } from "../services/projectLimits.js";
+import { rejectInvalidProjectId } from "../utils/projectRequest.js";
 
 export function buildManifest(files) {
   const manifest = [];
@@ -22,6 +24,7 @@ export async function chat(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
   const project = await Project.findOneAndUpdate(
     {
       _id: req.params.id,
@@ -34,6 +37,15 @@ export async function chat(req, res) {
 
   if (!project) {
     return res.status(409).json({ error: "Project is not ready for revision" });
+  }
+
+  const currentLimitError = getProjectLimitError(project.files);
+  if (currentLimitError) {
+    project.status = "completed";
+    await project.save();
+    return res
+      .status(413)
+      .json({ error: currentLimitError, code: "PROJECT_LIMIT_REACHED" });
   }
   // save user prompt after claiming the revision
   project.messages.push({
@@ -77,6 +89,14 @@ export async function chat(req, res) {
       applied,
       errors,
     } = applyOperations(project.files, result.operations);
+    const limitError = getProjectLimitError(updatedFiles);
+    if (limitError) {
+      project.status = "completed";
+      await project.save();
+      return res
+        .status(413)
+        .json({ error: limitError, code: "PROJECT_LIMIT_REACHED" });
+    }
     if (errors.length > 0) {
       console.warn(`[Diff] Eroor applying Operations:`, errors);
     }

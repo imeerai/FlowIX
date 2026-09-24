@@ -15,7 +15,7 @@ const SandPackErrorMonitor = ({ onErrorChange }) => {
         msg.includes("net::ERR");
 
       if (isNetworkError) {
-        onErrorChange("network");
+        onErrorChange(false);
         return;
       }
     }

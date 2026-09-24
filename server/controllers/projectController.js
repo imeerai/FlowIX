@@ -1,6 +1,8 @@
 import Project from "../models/Project.js";
 import crypto from "crypto";
 import { generateProject } from "../services/ai.js";
+import { getProjectLimitError } from "../services/projectLimits.js";
+import { rejectInvalidProjectId } from "../utils/projectRequest.js";
 
 function hashContent(content) {
   // Simple hash function for demonstration purposes
@@ -201,6 +203,7 @@ export async function getProjectDetails(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const project = await Project.findOne({
     _id: req.params.id,
@@ -240,6 +243,7 @@ export async function deleteProject(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const result = await Project.findOneAndDelete({
     _id: req.params.id,
@@ -265,6 +269,15 @@ export async function updateProjectFiles(req, res) {
 
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (rejectInvalidProjectId(req, res)) return;
+
+  const limitError = getProjectLimitError(files);
+  if (limitError) {
+    return res.status(413).json({
+      error: limitError,
+      code: "PROJECT_LIMIT_REACHED",
+    });
   }
 
   const project = await Project.findOne({
@@ -318,6 +331,7 @@ export async function publishProject(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const project = await Project.findOneAndUpdate(
     {
@@ -346,6 +360,8 @@ export async function publishProject(req, res) {
 // Get a publicly published project details (without auth)
 
 export async function getPublicProject(req, res) {
+  if (rejectInvalidProjectId(req, res)) return;
+
   const project = await Project.findById(req.params.id);
 
   if (!project) {
