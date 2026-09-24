@@ -1,11 +1,15 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import Project from "./Project.js";
 
 const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+      trim: true,
+      minlength: 2,
+      maxlength: 80,
     },
     email: {
       type: String,
@@ -13,10 +17,14 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      maxlength: 254,
+      match: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
     },
     password: {
       type: String,
       required: true,
+      select: false,
+      minlength: 12,
     },
   },
   { timestamps: true },
@@ -31,9 +39,22 @@ UserSchema.pre("save", async function () {
 });
 
 UserSchema.methods.comparePassword = async function (password) {
-  //await likha hai
   return await bcrypt.compare(password, this.password);
 };
+
+const deleteOwnedProjects = async function () {
+  const user = await this.model.findOne(this.getFilter()).select("_id");
+  if (user) {
+    await Project.deleteMany({ owner: user._id });
+  }
+};
+
+UserSchema.pre("findOneAndDelete", deleteOwnedProjects);
+UserSchema.pre(
+  "deleteOne",
+  { document: false, query: true },
+  deleteOwnedProjects,
+);
 
 export const User = mongoose.model("User", UserSchema);
 export default User;

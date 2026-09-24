@@ -1,6 +1,9 @@
 import Project from "../models/Project.js";
 import crypto from "crypto";
 import { generateProject } from "../services/ai.js";
+import { getProjectLimitError } from "../services/projectLimits.js";
+import { rejectInvalidProjectId } from "../utils/projectRequest.js";
+import { validatePrompt } from "../utils/validation.js";
 
 function hashContent(content) {
   // Simple hash function for demonstration purposes
@@ -11,10 +14,10 @@ function hashContent(content) {
 // Create a new project from an AI prompt
 
 export async function createProject(req, res) {
-  const { prompt } = req.body;
+  const prompt = validatePrompt(req.body?.prompt);
 
-  if (!prompt || typeof prompt !== "string") {
-    return res.status(400).json({ error: "Prompt is required" });
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt must be 3-12000 characters" });
   }
 
   if (!req.user) {
@@ -44,15 +47,9 @@ export async function createProject(req, res) {
 
   // Start background generation
   runBackgroundGeneration(project._id.toString(), prompt).catch(async (err) => {
-    console.error(
-      `[BACKGROUND AI] fatal generation error for project ${project._id}:`,
-      err,
-    );
-
-    // Update project status if background generation fails
     await Project.findByIdAndUpdate(project._id, {
       status: "failed",
-      error: err.message,
+      error: "Project generation failed. Please try again.",
       currentFile: null,
     });
   });
@@ -78,14 +75,8 @@ export async function createProject(req, res) {
 async function runBackgroundGeneration(projectId, prompt) {
   let fileUpdateQueue = Promise.resolve();
   try {
-    console.log(
-      `[BACKGROUND AI] Starting generation for project ${projectId}...`,
-    );
     const result = await generateProject(prompt, {
       onPlan: async (plan) => {
-        console.log(
-          `[BACKGROUND AI] Plan created for project ${projectId}. Planned files: ${plan.files.length} files`,
-        );
         const fileList = plan.files
           .map((f) => `- \` ${f.path}\`: ${f.description}`)
           .join("\n");
@@ -103,17 +94,11 @@ async function runBackgroundGeneration(projectId, prompt) {
         });
       },
       onFileStart: async (path) => {
-        console.log(
-          `[BACKGROUND AI] Starting generation of file ${path} for project ${projectId}`,
-        );
         await Project.findByIdAndUpdate(projectId, {
           currentFile: path,
         });
       },
       onFileComplete: async (path, code) => {
-        console.log(
-          `[BACKGROUND AI] Completed generation of file ${path} for project ${projectId}`,
-        );
         const update = fileUpdateQueue.then(async () => {
           const project = await Project.findById(projectId);
           if (project) {
@@ -134,10 +119,6 @@ async function runBackgroundGeneration(projectId, prompt) {
         await update;
       },
     });
-    console.log(
-      `[BACKGROUND AI] Generation completed for project ${projectId}`,
-    );
-
     const project = await Project.findById(projectId);
     if (project) {
       project.status = "completed";
@@ -154,17 +135,13 @@ async function runBackgroundGeneration(projectId, prompt) {
       await project.save();
     }
   } catch (error) {
-    console.error(
-      `[BACKGROUND AI] Error in background generation for project ${projectId}:`,
-      error,
-    );
     await Project.findByIdAndUpdate(projectId, {
       status: "failed",
-      error: error.message,
+      error: "Project generation failed. Please try again.",
       $push: {
         messages: {
           role: "assistant",
-          content: `Error during generation: ${error.message}`,
+          content: "Project generation failed. Please try again.",
           timestamp: new Date(),
         },
       },
@@ -201,6 +178,7 @@ export async function getProjectDetails(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const project = await Project.findOne({
     _id: req.params.id,
@@ -227,7 +205,10 @@ export async function getProjectDetails(req, res) {
     filesPlanned: project.filesPlanned,
     filesGenerated: project.filesGenerated,
     currentFile: project.currentFile,
-    error: project.error,
+    error:
+      project.status === "failed"
+        ? "Project generation failed. Please try again."
+        : null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   });
@@ -240,6 +221,7 @@ export async function deleteProject(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const result = await Project.findOneAndDelete({
     _id: req.params.id,
@@ -265,6 +247,15 @@ export async function updateProjectFiles(req, res) {
 
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (rejectInvalidProjectId(req, res)) return;
+
+  const limitError = getProjectLimitError(files);
+  if (limitError) {
+    return res.status(413).json({
+      error: limitError,
+      code: "PROJECT_LIMIT_REACHED",
+    });
   }
 
   const project = await Project.findOne({
@@ -318,6 +309,7 @@ export async function publishProject(req, res) {
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  if (rejectInvalidProjectId(req, res)) return;
 
   const project = await Project.findOneAndUpdate(
     {
@@ -346,6 +338,8 @@ export async function publishProject(req, res) {
 // Get a publicly published project details (without auth)
 
 export async function getPublicProject(req, res) {
+  if (rejectInvalidProjectId(req, res)) return;
+
   const project = await Project.findById(req.params.id);
 
   if (!project) {

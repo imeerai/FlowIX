@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "language": "en,en-US",
+  "words": [
+    "Sandpack",
+    "CodeSandbox",
+    "codesandbox",
+    "imeer",
+    "FlowIX",
+    "SandpackPreview",
+    "SandpackProvider",
+    "SandpackCodeEditor",
+    "SandpackLayout",
+    "SandpackFileWatcher",
+    "SandpackRuntimeStatus",
+    "SandPackErrorMonitor",
+    "useSandpack",
+    "OpenRouter",
+    "MongoDB",
+    "Mongoose",
+    "Axios",
+    "Vite",
+    "Tailwind"
+  ]
+}

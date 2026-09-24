@@ -29,6 +29,11 @@ export function AppContextProvider({ children }) {
   const [generatingProject, setGeneratingProject] = useState(false);
   const [activeFile, setActiveFile] = useState("App.js");
   const [showCode, setShowCode] = useState(false);
+  const requestControllerRef = React.useRef(null);
+
+  const cancelRequest = useCallback(() => {
+    requestControllerRef.current?.abort();
+  }, []);
 
   //auth action
   const checkSession = async () => {
@@ -53,9 +58,9 @@ export function AppContextProvider({ children }) {
       toast.success("Welcome back!");
       navigate("/");
     } catch (error) {
-      console.error("Login error:", error);
       const errorMessage =
         error?.response?.data?.error ||
+        error.userMessage ||
         "Invalid email or password. Please try again.";
       toast.error(errorMessage);
       throw new Error(errorMessage);
@@ -73,9 +78,9 @@ export function AppContextProvider({ children }) {
       toast.success("Account created successfully!");
       navigate("/");
     } catch (error) {
-      console.error("Register failed:", error);
       const errorMessage =
         error?.response?.data?.error ||
+        error.userMessage ||
         "Registration failed. Please try again.";
       toast.error(errorMessage);
       throw new Error(errorMessage);
@@ -91,7 +96,6 @@ export function AppContextProvider({ children }) {
       toast.success("Logged out successfully!");
       navigate("/login");
     } catch (error) {
-      console.error("Logout failed:", error);
       toast.error("Logout failed");
     }
   };
@@ -103,8 +107,7 @@ export function AppContextProvider({ children }) {
       const { data } = await api.get("/api/projects");
       setProjects(data);
     } catch (error) {
-      console.error("failed to list the project", error);
-      toast.error("Failed to load projects list");
+      toast.error(error.userMessage || "Failed to load projects list");
     } finally {
       setLoadingProjects(false);
     }
@@ -127,9 +130,8 @@ export function AppContextProvider({ children }) {
         });
       }
     } catch (error) {
-      console.error("failed to load project", error);
       if (!silent) {
-        toast.error("Failed to load project details");
+        toast.error(error.userMessage || "Failed to load project details");
         navigate("/");
       }
     } finally {
@@ -159,21 +161,35 @@ export function AppContextProvider({ children }) {
   const handleGenerate = useCallback(
     async (prompt) => {
       if (!user) return;
+      cancelRequest();
+      const controller = new AbortController();
+      requestControllerRef.current = controller;
       setGeneratingProject(true);
       try {
-        const { data } = await api.post("/api/projects", { prompt });
-        toast.success("AI agent is planning structure......");
+        const { data } = await api.post(
+          "/api/projects",
+          { prompt },
+          {
+            signal: controller.signal,
+          },
+        );
+        toast.success("AI agent is planning the project structure...");
         navigate(`/builder/${data._id}`);
       } catch (error) {
-        console.error("failed to generate project", error);
+        if (error.code === "ERR_CANCELED") return;
         toast.error(
-          error?.response?.data?.error || "Failed to generate project",
+          error?.response?.data?.error ||
+            error.userMessage ||
+            "Failed to generate project",
         );
       } finally {
+        if (requestControllerRef.current === controller) {
+          requestControllerRef.current = null;
+        }
         setGeneratingProject(false);
       }
     },
-    [navigate, user],
+    [cancelRequest, navigate, user],
   );
 
   const handleDelete = useCallback(
@@ -184,8 +200,7 @@ export function AppContextProvider({ children }) {
         setProjects((prev) => prev.filter((project) => project._id !== id));
         toast.success("Project deleted successfully");
       } catch (error) {
-        console.error("failed to delete project", error);
-        toast.error("Failed to delete project");
+        toast.error(error.userMessage || "Failed to delete project");
       }
     },
     [user],
@@ -194,13 +209,22 @@ export function AppContextProvider({ children }) {
   const handleChat = useCallback(
     async (prompt) => {
       if (!activeProject || !user) return;
+      cancelRequest();
+      const controller = new AbortController();
+      requestControllerRef.current = controller;
       setChatLoading(true);
+      setActiveProject((current) =>
+        current && current._id === activeProject._id
+          ? { ...current, status: "revising" }
+          : current,
+      );
       try {
         const { data } = await api.post(
           `/api/projects/${activeProject._id}/chat`,
           {
             prompt,
           },
+          { signal: controller.signal },
         );
         setActiveProject(data);
         if (data.errors && data.errors.length > 0) {
@@ -209,13 +233,20 @@ export function AppContextProvider({ children }) {
           toast.success(`Updated to version ${data.version} `);
         }
       } catch (error) {
-        console.error("failed to request failed", error);
-        toast.error(error?.response?.data?.error || "Revision request failed");
+        if (error.code === "ERR_CANCELED") return;
+        toast.error(
+          error?.response?.data?.error ||
+            error.userMessage ||
+            "Revision request failed",
+        );
       } finally {
+        if (requestControllerRef.current === controller) {
+          requestControllerRef.current = null;
+        }
         setChatLoading(false);
       }
     },
-    [user, activeProject],
+    [cancelRequest, user, activeProject],
   );
 
   const debouncedSave = React.useMemo(
@@ -224,8 +255,7 @@ export function AppContextProvider({ children }) {
         try {
           await api.put(`/api/projects/${id}/files`, { files });
         } catch (e) {
-          console.error("Failed to auto-save files", e);
-          toast.error("Failed to save code modifications.");
+          toast.error(e.userMessage || "Failed to save code modifications.");
         }
       }, 1000),
     [],
@@ -263,6 +293,7 @@ export function AppContextProvider({ children }) {
         chatLoading,
         generatingProject,
         handleGenerate,
+        cancelRequest,
         handleDelete,
         activeFile,
         setActiveFile,
