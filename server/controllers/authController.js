@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/auth.js";
+import { validateRegistrationInput } from "../utils/validation.js";
 
 // Helper function to set cookie
 const setSessionCookie = (res, payload) => {
@@ -22,18 +23,13 @@ export async function register(req, res) {
   try {
     const { name, email, password } = req.body;
 
-    if (
-      typeof name !== "string" ||
-      typeof email !== "string" ||
-      typeof password !== "string" ||
-      !name.trim() ||
-      !email.trim() ||
-      !password
-    ) {
-      return res.status(400).json({
-        error: "Please provide all required fields",
-      });
-    }
+    const validationError = validateRegistrationInput({
+      name,
+      email,
+      password,
+    });
+    if (validationError)
+      return res.status(400).json({ error: validationError });
 
     const trimmedEmail = email.trim().toLowerCase();
 
@@ -67,8 +63,6 @@ export async function register(req, res) {
       },
     });
   } catch (error) {
-    console.error("Register error:", error);
-
     return res.status(500).json({
       error: "Something went wrong while registering",
     });
@@ -93,7 +87,7 @@ export async function login(req, res) {
 
     const user = await User.findOne({
       email: email.trim().toLowerCase(),
-    });
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({
@@ -122,8 +116,6 @@ export async function login(req, res) {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-
     return res.status(500).json({
       error: "Something went wrong while logging in",
     });
@@ -166,8 +158,6 @@ export async function me(req, res) {
       user,
     });
   } catch (error) {
-    console.error("Me error:", error);
-
     return res.status(500).json({
       error: "Something went wrong",
     });
@@ -191,7 +181,6 @@ export async function deleteAccount(req, res) {
 
     return res.json({ success: true });
   } catch (error) {
-    console.error("Delete account error:", error);
     return res.status(500).json({ error: "Something went wrong" });
   }
 }

@@ -43,7 +43,6 @@ async function generateSingleFile(
 
   const userMsg = `Project: ${prompt}\n\nWrite the complete code for: ${file.path}\nPurpose: ${file.description}`;
 
-  console.log(`[AI] Creating file: ${file.path}...`);
   const { object } = await generateObject({
     model,
     schema: FileCodeSchema,
@@ -65,22 +64,12 @@ async function generateSingleFile(
 
   code = validation.code;
 
-  if (validation.warnings.length > 0) {
-    console.log(
-      `[Validator] Code adjustments for ${file.path}:\n  - ${validation.warnings.join("\n  - ")}`,
-    );
-  }
-
-  console.log(`[AI] Created file: ${file.path} (${code.length} chars)`);
   return { path: file.path, code };
 }
 
 // Generate project files: plan first, then build files in order with fallback retries
 export async function generateProject(prompt, callbacks) {
   // Phase 1: Plan
-  console.log(
-    `[AI] Phase 1: Planning file structure for: "${prompt.slice(0, 80)}..."`,
-  );
   const { object: plan } = await generateObject({
     model,
     schema: FilePlanSchema,
@@ -118,10 +107,6 @@ export async function generateProject(prompt, callbacks) {
     await callbacks.onPlan(plan);
   }
 
-  console.log(
-    `[AI] Phase 2: Generating ${plan.files.length} files in parallel (concurrency=${MAX_CONCURRENCY}): ${plan.files.map((f) => f.path).join(", ")}`,
-  );
-
   const files = {};
   let pendingFiles = plan.files.map((f) => ({ ...f }));
 
@@ -131,9 +116,6 @@ export async function generateProject(prompt, callbacks) {
     if (pendingFiles.length === 0) break;
 
     if (round > 0) {
-      console.log(
-        `[AI] Retry round ${round}/${maxRetryRounds} for ${pendingFiles.length} failed files: ${pendingFiles.map((f) => f.path).join(", ")}`,
-      );
     }
 
     const results = await pMap(
@@ -179,9 +161,6 @@ export async function generateProject(prompt, callbacks) {
         const { path, code } = entry.result;
         files[path.startsWith("/") ? path : "/" + path] = code;
       } else {
-        console.warn(
-          `[AI] File ${entry.file.path} failed in round ${round}: ${entry.error?.message || entry.error}`,
-        );
         failedFiles.push(entry.file);
       }
     }
@@ -190,9 +169,6 @@ export async function generateProject(prompt, callbacks) {
 
   if (pendingFiles.length > 0) {
     const failedPaths = pendingFiles.map((f) => f.path).join(", ");
-    console.error(
-      `[AI] Failed to generate ${pendingFiles.length} files after all retry rounds: ${failedPaths}`,
-    );
 
     if (pendingFiles.some((file) => file.path === "/App.js")) {
       throw new Error("AI did not generate /App.js entry point");
@@ -260,8 +236,6 @@ export async function reviseProject(
 
   contextParts.push(`\n## Revision Request\n${prompt}`);
 
-  console.log("[AI] Revising project...");
-
   const { object: rawParsed } = await generateObject({
     model,
     schema: RevisionResultSchema,
@@ -299,11 +273,6 @@ export async function reviseProject(
           "create",
         );
         op.content = validation.content;
-        if (validation.warnings.length > 0) {
-          console.log(
-            `[Validator] Revision Create adjustments for ${op.path}:\n  - ${validation.warnings.join("\n  - ")}`,
-          );
-        }
       } else if (op.op === "update" && op.replace) {
         const validation = validateRevisionContent(
           op.replace,
@@ -311,11 +280,6 @@ export async function reviseProject(
           "update",
         );
         op.replace = validation.content;
-        if (validation.warnings.length > 0) {
-          console.log(
-            `[Validator] Revision Update adjustments for ${op.path}:\n  - ${validation.warnings.join("\n  - ")}`,
-          );
-        }
       }
       return op;
     });

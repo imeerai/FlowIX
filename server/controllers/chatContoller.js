@@ -3,6 +3,7 @@ import { reviseProject } from "../services/ai.js";
 import { applyOperations } from "../services/diff.js";
 import { getProjectLimitError } from "../services/projectLimits.js";
 import { rejectInvalidProjectId } from "../utils/projectRequest.js";
+import { validatePrompt } from "../utils/validation.js";
 
 export function buildManifest(files) {
   const manifest = [];
@@ -16,10 +17,10 @@ export function buildManifest(files) {
 //send a revision prompt and return updated project.
 
 export async function chat(req, res) {
-  const { prompt } = req.body;
+  const prompt = validatePrompt(req.body?.prompt);
 
-  if (!prompt || typeof prompt !== "string") {
-    return res.status(400).json({ error: "prompt is required" });
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt must be 3-12000 characters" });
   }
   if (!req.user) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -69,19 +70,12 @@ export async function chat(req, res) {
       role: m.role,
       content: m.content,
     }));
-    console.log(
-      `[AI] Revising project ${project._id}: "${prompt.slice(0, 80)}...."` +
-        ` (${manifest.length} files, manifest ~${JSON.stringify(manifest).length} chars)`,
-    );
     //Call AI with manifest + relevant files
     const result = await reviseProject(
       prompt,
       manifest,
       relevantFiles,
       recentMessages,
-    );
-    console.log(
-      `[AI] got ${result.operations.length} operations for project ${result.description}`,
     );
     //apply operations to files map
     const {
@@ -98,7 +92,6 @@ export async function chat(req, res) {
         .json({ error: limitError, code: "PROJECT_LIMIT_REACHED" });
     }
     if (errors.length > 0) {
-      console.warn(`[Diff] Eroor applying Operations:`, errors);
     }
 
     //update project in DB
@@ -133,11 +126,8 @@ export async function chat(req, res) {
       aiDescription: result.description,
     });
   } catch (error) {
-    console.error(`[AI revision error] ${error.message}`);
     project.status = "failed";
     await project.save();
-    res
-      .status(500)
-      .json({ error: error.message || "failed to process revision request" });
+    res.status(500).json({ error: "Revision failed. Please try again." });
   }
 }

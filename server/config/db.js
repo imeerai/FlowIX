@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 
 export async function connectDB() {
-  mongoose.connection.on("connected", () => {
-    console.log("MongoDB connected");
+  const mongoUrl = process.env.MONGO_URL || process.env.MANGO_URL;
+  if (!mongoUrl) throw new Error("MONGO_URL is required");
+  await mongoose.connect(mongoUrl, {
+    serverSelectionTimeoutMS: 10000,
   });
-  await mongoose.connect(process.env.MANGO_URL);
 }

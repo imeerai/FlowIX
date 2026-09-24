@@ -9,6 +9,11 @@ import {
   isValidProjectId,
   rejectInvalidProjectId,
 } from "../utils/projectRequest.js";
+import {
+  PASSWORD_REQUIREMENTS,
+  validatePrompt,
+  validateRegistrationInput,
+} from "../utils/validation.js";
 
 const users = ["user-a", "user-b", "user-c", "user-d"];
 
@@ -56,4 +61,37 @@ test("malformed and injection-like project IDs are rejected", () => {
   assert.equal(result, true);
   assert.equal(response.statusCode, 400);
   assert.deepEqual(response.body, { error: "Invalid project id" });
+});
+
+test("registration validation requires a real name, email, and strong password", () => {
+  assert.equal(
+    validateRegistrationInput({
+      name: "Meer Abbas",
+      email: "meer@example.com",
+      password: "StrongPassword!9",
+    }),
+    null,
+  );
+  assert.match(
+    validateRegistrationInput({
+      name: "x",
+      email: "not-an-email",
+      password: "weak",
+    }),
+    /Name must be/,
+  );
+  assert.equal(
+    validateRegistrationInput({
+      name: "Valid Name",
+      email: "valid@example.com",
+      password: "alllowercase123!",
+    }),
+    PASSWORD_REQUIREMENTS,
+  );
+});
+
+test("prompts are bounded and normalized", () => {
+  assert.equal(validatePrompt("  build a dashboard  "), "build a dashboard");
+  assert.equal(validatePrompt("no"), null);
+  assert.equal(validatePrompt("x".repeat(12001)), "x".repeat(12000));
 });

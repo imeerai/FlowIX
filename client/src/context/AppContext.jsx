@@ -58,9 +58,9 @@ export function AppContextProvider({ children }) {
       toast.success("Welcome back!");
       navigate("/");
     } catch (error) {
-      console.error("Login error:", error);
       const errorMessage =
         error?.response?.data?.error ||
+        error.userMessage ||
         "Invalid email or password. Please try again.";
       toast.error(errorMessage);
       throw new Error(errorMessage);
@@ -78,9 +78,9 @@ export function AppContextProvider({ children }) {
       toast.success("Account created successfully!");
       navigate("/");
     } catch (error) {
-      console.error("Register failed:", error);
       const errorMessage =
         error?.response?.data?.error ||
+        error.userMessage ||
         "Registration failed. Please try again.";
       toast.error(errorMessage);
       throw new Error(errorMessage);
@@ -96,7 +96,6 @@ export function AppContextProvider({ children }) {
       toast.success("Logged out successfully!");
       navigate("/login");
     } catch (error) {
-      console.error("Logout failed:", error);
       toast.error("Logout failed");
     }
   };
@@ -108,8 +107,7 @@ export function AppContextProvider({ children }) {
       const { data } = await api.get("/api/projects");
       setProjects(data);
     } catch (error) {
-      console.error("failed to list the project", error);
-      toast.error("Failed to load projects list");
+      toast.error(error.userMessage || "Failed to load projects list");
     } finally {
       setLoadingProjects(false);
     }
@@ -132,9 +130,8 @@ export function AppContextProvider({ children }) {
         });
       }
     } catch (error) {
-      console.error("failed to load project", error);
       if (!silent) {
-        toast.error("Failed to load project details");
+        toast.error(error.userMessage || "Failed to load project details");
         navigate("/");
       }
     } finally {
@@ -180,9 +177,10 @@ export function AppContextProvider({ children }) {
         navigate(`/builder/${data._id}`);
       } catch (error) {
         if (error.code === "ERR_CANCELED") return;
-        console.error("failed to generate project", error);
         toast.error(
-          error?.response?.data?.error || "Failed to generate project",
+          error?.response?.data?.error ||
+            error.userMessage ||
+            "Failed to generate project",
         );
       } finally {
         if (requestControllerRef.current === controller) {
@@ -202,8 +200,7 @@ export function AppContextProvider({ children }) {
         setProjects((prev) => prev.filter((project) => project._id !== id));
         toast.success("Project deleted successfully");
       } catch (error) {
-        console.error("failed to delete project", error);
-        toast.error("Failed to delete project");
+        toast.error(error.userMessage || "Failed to delete project");
       }
     },
     [user],
@@ -237,8 +234,11 @@ export function AppContextProvider({ children }) {
         }
       } catch (error) {
         if (error.code === "ERR_CANCELED") return;
-        console.error("failed to request failed", error);
-        toast.error(error?.response?.data?.error || "Revision request failed");
+        toast.error(
+          error?.response?.data?.error ||
+            error.userMessage ||
+            "Revision request failed",
+        );
       } finally {
         if (requestControllerRef.current === controller) {
           requestControllerRef.current = null;
@@ -255,8 +255,7 @@ export function AppContextProvider({ children }) {
         try {
           await api.put(`/api/projects/${id}/files`, { files });
         } catch (e) {
-          console.error("Failed to auto-save files", e);
-          toast.error("Failed to save code modifications.");
+          toast.error(e.userMessage || "Failed to save code modifications.");
         }
       }, 1000),
     [],
