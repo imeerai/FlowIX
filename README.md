@@ -3,6 +3,44 @@
 FlowIX is an AI-powered website builder. Users can create projects from prompts,
 edit generated files, preview them, and publish projects.
 
+## Features
+
+- User registration, login, logout, and session-based authentication
+- Strong password and user input validation
+- AI-generated website project planning and source files
+- In-browser project file explorer and code editing
+- Live website preview with Sandpack
+- AI chat-based project revisions
+- Project autosave, version tracking, and generation progress
+- Project publishing with public preview URLs
+- Project export as a downloadable archive
+- Per-user project ownership and protected project routes
+- API rate limiting, secure cookies, CORS controls, and security headers
+- User-friendly handling for offline, timeout, and server errors
+
+## Technology Stack
+
+### Frontend
+
+- React 19
+- Vite
+- Tailwind CSS 4
+- React Router
+- Axios
+- Sandpack React for live previews
+- Lucide React for icons
+
+### Backend
+
+- Node.js with Express 5
+- MongoDB with Mongoose
+- JSON Web Tokens with HTTP-only cookies
+- bcrypt password hashing
+- Zod schemas for AI response validation
+- OpenRouter through the AI SDK for website generation
+- Helmet for security headers
+- CORS and express-rate-limit for API protection
+
 ## Project Structure
 
 - `client/` - React and Vite frontend
@@ -98,25 +136,3 @@ validation, password strength rules, and prompt bounds.
   stack-trace details.
 - Do not log tokens, passwords, prompts, generated source, API responses, or
   full provider errors in production.
-
-## GitHub Push Checklist
-
-Before pushing changes:
-
-```bash
-cd server && npm test
-cd ../client && npm run build
-cd ..
-git status
-```
-
-Commit source code and tests. Do not commit:
-
-- `.env`, `.env.*`, or any file containing real credentials
-- `node_modules/`
-- `dist/`
-- logs or local database dumps
-
-The repository `.gitignore` protects these files. If a secret was ever pushed,
-rotate it immediately; deleting the file alone does not make the old secret
-safe.
