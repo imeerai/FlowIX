@@ -136,25 +136,3 @@ validation, password strength rules, and prompt bounds.
   stack-trace details.
 - Do not log tokens, passwords, prompts, generated source, API responses, or
   full provider errors in production.
-
-## GitHub Push Checklist
-
-Before pushing changes:
-
-```bash
-cd server && npm test
-cd ../client && npm run build
-cd ..
-git status
-```
-
-Commit source code and tests. Do not commit:
-
-- `.env`, `.env.*`, or any file containing real credentials
-- `node_modules/`
-- `dist/`
-- logs or local database dumps
-
-The repository `.gitignore` protects these files. If a secret was ever pushed,
-rotate it immediately; deleting the file alone does not make the old secret
-safe.
