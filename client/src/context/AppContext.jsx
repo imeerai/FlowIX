@@ -206,6 +206,29 @@ export function AppContextProvider({ children }) {
     [user],
   );
 
+  const retryGeneration = useCallback(
+    async (id) => {
+      if (!user) return;
+      try {
+        await api.post(`/api/projects/${id}/retry`);
+        // Optimistically reset local state so polling kicks in immediately
+        setActiveProject((current) =>
+          current && current._id === id
+            ? { ...current, status: "pending", error: null, filesPlanned: [], filesGenerated: [], files: {} }
+            : current,
+        );
+        toast.success("Retrying generation...");
+      } catch (error) {
+        toast.error(
+          error?.response?.data?.error ||
+            error.userMessage ||
+            "Failed to retry project generation",
+        );
+      }
+    },
+    [user],
+  );
+
   const handleChat = useCallback(
     async (prompt) => {
       if (!activeProject || !user) return;
@@ -295,6 +318,7 @@ export function AppContextProvider({ children }) {
         handleGenerate,
         cancelRequest,
         handleDelete,
+        retryGeneration,
         activeFile,
         setActiveFile,
         showCode,

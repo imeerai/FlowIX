@@ -7,7 +7,6 @@ import {
 } from "@codesandbox/sandpack-react";
 import { detectDependencies } from "../utils/sandpackUtils";
 import SandPackErrorMonitor from "./SandPackErrorMonitor";
-import BrandWatermark from "./BrandWatermark";
 import { Loader2, RefreshCw } from "lucide-react";
 
 function FullPageRuntimeStatus({ onRetry }) {
@@ -103,14 +102,10 @@ const FullPagePreview = ({ files }) => {
         options={{
           autorun: true,
           initMode: "immediate",
-          experimental_enableServiceWorker: true,
           logLevel: 0,
         }}
         className="h-full w-full"
       >
-        <FullPageRuntimeStatus
-          onRetry={() => setRuntimeKey((key) => key + 1)}
-        />
         <SandPackErrorMonitor onErrorChange={setShowErrorOverlay} />
         <SandpackLayout className="h-full w-full border-none! bg-transparent!">
           <SandpackPreview
@@ -122,7 +117,6 @@ const FullPagePreview = ({ files }) => {
           />
         </SandpackLayout>
       </SandpackProvider>
-      <BrandWatermark />
     </div>
   );
 };

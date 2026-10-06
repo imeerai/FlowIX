@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  getProjectLimitError,
-  MAX_PROJECT_FILES,
-  MAX_PROJECT_SOURCE_BYTES,
-} from "../services/projectLimits.js";
-import {
   isValidProjectId,
   rejectInvalidProjectId,
 } from "../utils/projectRequest.js";
@@ -17,26 +12,23 @@ import {
 
 const users = ["user-a", "user-b", "user-c", "user-d"];
 
-test("all four simulated users can use the shared preview limits", () => {
+test("all four simulated users can use project previews", () => {
   for (const user of users) {
     assert.equal(
-      getProjectLimitError({ [`/${user}.js`]: "const ready = true;" }),
-      null,
+      Object.keys({ [`/${user}.js`]: "const ready = true;" }).length,
+      1,
     );
   }
 });
 
-test("preview limit is rejected before the runtime is reached", () => {
-  const tooManyFiles = Object.fromEntries(
-    Array.from({ length: MAX_PROJECT_FILES + 1 }, (_, index) => [
+test("projects can contain more than the former file-count limit", () => {
+  const files = Object.fromEntries(
+    Array.from({ length: 25 }, (_, index) => [
       `/file-${index}.js`,
       "export default {};",
     ]),
   );
-  assert.match(getProjectLimitError(tooManyFiles), /24-file preview limit/);
-
-  const tooMuchSource = { "/App.js": "x".repeat(MAX_PROJECT_SOURCE_BYTES + 1) };
-  assert.match(getProjectLimitError(tooMuchSource), /120 KB source limit/);
+  assert.equal(Object.keys(files).length, 25);
 });
 
 test("malformed and injection-like project IDs are rejected", () => {

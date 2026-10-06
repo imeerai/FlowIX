@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import pMap from "p-map";
 import {
   FileCodeSchema,
@@ -16,21 +16,140 @@ import {
   validateAndFixCode,
   validateRevisionContent,
 } from "./codeValidator.js";
-import {
-  MAX_PROJECT_FILES,
-  MAX_PROJECT_SOURCE_BYTES,
-} from "./projectLimits.js";
 
 // --- OpenRouter Model Client Setup ---
-const MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
 const MAX_CONCURRENCY = parseInt(process.env.AI_MAX_CONCURRENCY || "6", 10);
 
-const openrouter = createOpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+function getModel() {
+  const modelName = process.env.OPENROUTER_MODEL || "openrouter/free";
+  const openrouter = createOpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
+  return openrouter(modelName);
+}
 
-const model = openrouter(MODEL);
+// --- Robust generateObject wrapper ---
+// Some free models (like cohere/north-mini-code) don't reliably support
+// structured JSON output mode. This wrapper falls back to text generation
+// and manual JSON extraction when generateObject fails.
+
+function extractJSON(text, isCodeSchema = false) {
+  if (!text) return null;
+
+  // 1. Try to find JSON in code fences
+  const fenceMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+  if (fenceMatch) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch {}
+  }
+
+  // 2. Try to find raw JSON object/array
+  const jsonMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[1]);
+    } catch {}
+  }
+
+  // 3. Try the entire text
+  try {
+    return JSON.parse(text.trim());
+  } catch {}
+
+  // 4. Fallback for code schemas (e.g. styles.css or component code):
+  // If the model returned plain code or wrapped it in code fences instead of JSON { code: "..." },
+  // extract the code directly into a { code: string } object.
+  if (isCodeSchema && text.trim().length > 0) {
+    let cleanCode = text.trim();
+    const codeFenceMatch = cleanCode.match(/^```(?:css|javascript|jsx|js|html)?\s*\n([\s\S]*?)\n```$/i);
+    if (codeFenceMatch) {
+      cleanCode = codeFenceMatch[1].trim();
+    } else {
+      cleanCode = cleanCode
+        .replace(/^```(?:css|javascript|jsx|js|html)?/i, "")
+        .replace(/```$/, "")
+        .trim();
+    }
+    if (cleanCode.length > 0) {
+      return { code: cleanCode };
+    }
+  }
+
+  return null;
+}
+
+async function safeGenerateObject({ schema, system, prompt, maxRetries = 2 }) {
+  const isCodeSchema = schema === FileCodeSchema || Boolean(schema.shape?.code);
+  const model = getModel();
+
+  // Attempt 1: native generateObject
+  try {
+    const result = await generateObject({
+      model,
+      schema,
+      system,
+      prompt,
+      maxRetries,
+    });
+    return result;
+  } catch (firstError) {
+    // If model doesn't support structured output, fall back to text
+    const isParseError =
+      firstError.name === "AI_JSONParseError" ||
+      firstError.message?.includes("could not parse") ||
+      firstError.message?.includes("No object generated");
+
+    if (!isParseError) {
+      throw firstError;
+    }
+  }
+
+  // Attempt 2: generateText with JSON instruction + manual parse
+  const jsonInstruction =
+    "\n\nIMPORTANT: You MUST respond with ONLY a valid JSON object. " +
+    "No markdown, no explanation, no code fences. Just raw JSON.\n" +
+    "The JSON must conform to this schema:\n" +
+    JSON.stringify(schema._def || schema.shape || schema, null, 2);
+
+  const { text } = await generateText({
+    model,
+    system: (system || "") + jsonInstruction,
+    prompt,
+    maxRetries,
+  });
+
+  const parsed = extractJSON(text, isCodeSchema);
+  if (!parsed) {
+    throw new Error(
+      "No object generated: model returned non-JSON response even after fallback",
+    );
+  }
+
+  // Validate with zod schema
+  const validated = schema.safeParse(parsed);
+  if (!validated.success) {
+    // Try to use partial data anyway — fill in defaults
+    const withDefaults = schema.safeParse({
+      ...parsed,
+      files: parsed.files || [],
+      projectName: parsed.projectName || parsed.name || "Generated Project",
+      projectDescription:
+        parsed.projectDescription ||
+        parsed.description ||
+        "A React project",
+    });
+    if (withDefaults.success) {
+      return { object: withDefaults.data };
+    }
+    throw new Error(
+      "No object generated: response did not match expected schema",
+    );
+  }
+
+  return { object: validated.data };
+}
 
 // Generate a single file's code
 async function generateSingleFile(
@@ -43,8 +162,7 @@ async function generateSingleFile(
 
   const userMsg = `Project: ${prompt}\n\nWrite the complete code for: ${file.path}\nPurpose: ${file.description}`;
 
-  const { object } = await generateObject({
-    model,
+  const { object } = await safeGenerateObject({
     schema: FileCodeSchema,
     system,
     prompt: userMsg,
@@ -70,11 +188,10 @@ async function generateSingleFile(
 // Generate project files: plan first, then build files in order with fallback retries
 export async function generateProject(prompt, callbacks) {
   // Phase 1: Plan
-  const { object: plan } = await generateObject({
-    model,
+  const { object: plan } = await safeGenerateObject({
     schema: FilePlanSchema,
     system: FILE_PLAN_SYSTEM,
-    prompt: `Plan a React website for: ${prompt}`,
+    prompt: `Plan a comprehensive React website for: ${prompt}`,
     maxRetries: 2,
   });
 
@@ -91,16 +208,24 @@ export async function generateProject(prompt, callbacks) {
     plan.files.push({
       path: "/styles.css",
       description:
-        "Global CSS: Google Font import, keyframe animations, utility classes",
+        "Global CSS: Google Fonts @import, :root CSS custom properties (color-bg, color-surface, color-primary, color-text, color-border, font-sans, radius, shadow, transition variables), full CSS reset (box-sizing, margin, padding, scroll-behavior, antialiased text), keyframe animations (fadeIn, slideUp, scaleIn), reusable utility classes (container, btn-primary, btn-secondary, section), component-level styles for EVERY component in the project, responsive media queries for mobile (768px) and tablet (1024px), hover/focus/active states for all interactive elements, and prefers-reduced-motion support. The CSS must be comprehensive and production-quality.",
       exports: "none",
       imports: [],
     });
   }
 
-  if (plan.files.length > MAX_PROJECT_FILES) {
-    throw new Error(
-      `The project plan has ${plan.files.length} files, but the preview supports at most ${MAX_PROJECT_FILES}. Please simplify the request.`,
-    );
+  // Ensure minimum component architecture for rich polish (if plan returned fewer than 4 files)
+  const defaultComponents = [
+    { path: "/components/Header.js", description: "Header navigation with logo, links, and CTA", exports: "default Header", imports: [] },
+    { path: "/components/Hero.js", description: "Hero section with headline, subtitle, visuals, and primary CTA", exports: "default Hero", imports: [] },
+    { path: "/components/Features.js", description: "Features grid showcase section", exports: "default Features", imports: [] },
+    { path: "/components/Footer.js", description: "Footer section with navigation links and copyright", exports: "default Footer", imports: [] },
+  ];
+
+  for (const comp of defaultComponents) {
+    if (!plan.files.find((f) => f.path === comp.path)) {
+      plan.files.push(comp);
+    }
   }
 
   if (callbacks?.onPlan) {
@@ -110,7 +235,7 @@ export async function generateProject(prompt, callbacks) {
   const files = {};
   let pendingFiles = plan.files.map((f) => ({ ...f }));
 
-  const maxRetryRounds = 2;
+  const maxRetryRounds = 1;
 
   for (let round = 0; round <= maxRetryRounds; round++) {
     if (pendingFiles.length === 0) break;
@@ -132,17 +257,6 @@ export async function generateProject(prompt, callbacks) {
             prompt,
             files,
           );
-
-          const generatedBytes =
-            Object.values(files).reduce(
-              (total, content) => total + Buffer.byteLength(content, "utf8"),
-              0,
-            ) + Buffer.byteLength(singleResult.code, "utf8");
-          if (generatedBytes > MAX_PROJECT_SOURCE_BYTES) {
-            throw new Error(
-              `Generated source exceeds the ${Math.round(MAX_PROJECT_SOURCE_BYTES / 1000)} KB preview limit. Please simplify the request.`,
-            );
-          }
 
           if (callbacks?.onFileComplete) {
             await callbacks.onFileComplete(file.path, singleResult.code);
@@ -210,6 +324,7 @@ export async function reviseProject(
   manifest,
   relevantFiles,
   recentMessages,
+  callbacks,
 ) {
   const contextParts = [];
 
@@ -236,8 +351,7 @@ export async function reviseProject(
 
   contextParts.push(`\n## Revision Request\n${prompt}`);
 
-  const { object: rawParsed } = await generateObject({
-    model,
+  const { object: rawParsed } = await safeGenerateObject({
     schema: RevisionResultSchema,
     system: REVISE_SYSTEM,
     prompt: contextParts.join("\n"),
@@ -283,6 +397,15 @@ export async function reviseProject(
       }
       return op;
     });
+
+    if (callbacks?.onPlan) {
+      await callbacks.onPlan({
+        files: rawParsed.operations.map((operation) => ({
+          path: operation.path,
+          description: `${operation.op} operation`,
+        })),
+      });
+    }
   }
   return rawParsed;
 }

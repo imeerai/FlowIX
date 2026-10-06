@@ -1,7 +1,6 @@
 import { Project } from "../models/Project.js";
 import { reviseProject } from "../services/ai.js";
 import { applyOperations } from "../services/diff.js";
-import { getProjectLimitError } from "../services/projectLimits.js";
 import { rejectInvalidProjectId } from "../utils/projectRequest.js";
 import { validatePrompt } from "../utils/validation.js";
 
@@ -40,14 +39,6 @@ export async function chat(req, res) {
     return res.status(409).json({ error: "Project is not ready for revision" });
   }
 
-  const currentLimitError = getProjectLimitError(project.files);
-  if (currentLimitError) {
-    project.status = "completed";
-    await project.save();
-    return res
-      .status(413)
-      .json({ error: currentLimitError, code: "PROJECT_LIMIT_REACHED" });
-  }
   // save user prompt after claiming the revision
   project.messages.push({
     role: "user",
@@ -76,29 +67,53 @@ export async function chat(req, res) {
       manifest,
       relevantFiles,
       recentMessages,
+      {
+        onPlan: async ({ files }) => {
+          await Project.findByIdAndUpdate(project._id, {
+            filesPlanned: files,
+            filesGenerated: [],
+            currentFile: null,
+            currentOperation: null,
+          });
+        },
+      },
     );
     //apply operations to files map
-    const {
-      files: updatedFiles,
-      applied,
-      errors,
-    } = applyOperations(project.files, result.operations);
-    const limitError = getProjectLimitError(updatedFiles);
-    if (limitError) {
-      project.status = "completed";
-      await project.save();
-      return res
-        .status(413)
-        .json({ error: limitError, code: "PROJECT_LIMIT_REACHED" });
+    let updatedFiles = { ...project.files };
+    const applied = [];
+    const errors = [];
+    for (const operation of result.operations) {
+      await Project.findByIdAndUpdate(project._id, {
+        currentFile: operation.path,
+        currentOperation: operation.op,
+      });
+
+      const resultForFile = applyOperations(updatedFiles, [operation]);
+      updatedFiles = resultForFile.files;
+      applied.push(...resultForFile.applied);
+      errors.push(...resultForFile.errors);
+
+      await Project.findByIdAndUpdate(project._id, {
+        $addToSet: { filesGenerated: operation.path },
+      });
     }
     if (errors.length > 0) {
     }
 
     //update project in DB
     project.files = updatedFiles;
+    project.filesPlanned = result.operations.map((operation) => ({
+      path: operation.path,
+      description: `${operation.op} operation`,
+    }));
+    project.filesGenerated = result.operations.map(
+      (operation) => operation.path,
+    );
     project.markModified("files");
     project.version += 1;
     project.status = "completed";
+    project.currentFile = null;
+    project.currentOperation = null;
     project.messages.push({
       role: "assistant",
       content:
