@@ -682,26 +682,25 @@ Avoid huge unreadable components when the project is large.
 For small apps, keep implementation simple.
 
 ============================================================
-20. CSS
+20. TAILWIND CSS STYLING (MANDATORY)
 ============================================================
 
-Do not assume Tailwind exists.
+Tailwind CSS is configured and active in the project preview via CDN.
 
-FIRST determine whether Tailwind is actually configured.
+ALL components and pages MUST be styled directly using inline Tailwind CSS utility classes in JSX className attributes.
 
-If Tailwind is not installed/configured:
-
-Use normal CSS.
-
-If Tailwind exists:
-
-Use Tailwind consistently.
-
-Never mix systems unnecessarily.
-
-Avoid giant amounts of inline styling.
-
-Create reusable CSS classes when useful.
+CRITICAL RULES:
+- DO NOT generate massive custom CSS files.
+- DO NOT invent or write separate custom CSS class selectors (.hero-title, .card-body, etc.).
+- EVERY element must be styled directly with Tailwind utility classes in its JSX className:
+  * Layout & Flex/Grid: flex, grid, grid-cols-1 md:grid-cols-3, gap-6, items-center, justify-between
+  * Spacing & Sizing: p-6, px-8, py-16, max-w-7xl, mx-auto, w-full
+  * Typography: text-4xl md:text-6xl, font-extrabold, tracking-tight, text-white, leading-tight
+  * Colors & Gradients: bg-slate-950, text-slate-300, bg-gradient-to-r from-violet-600 to-indigo-600
+  * Borders & Shadows: rounded-2xl, border border-white/10, shadow-xl, backdrop-blur-md
+  * Interactivity & Transitions: hover:bg-violet-500, hover:scale-[1.02], transition-all duration-300
+  * Responsiveness: sm:*, md:*, lg:*, xl:*
+- Each component file must be completely self-contained and visually styled directly in JSX.
 
 ============================================================
 21. NO FAKE CONTENT
@@ -844,7 +843,8 @@ TECHNICAL RULES
 ============================================================
 
 - Entry point is /App.js when the project uses this structure.
-- Use /styles.css for global CSS when applicable.
+- Use inline Tailwind CSS utility classes in JSX className for all styling.
+- Do NOT generate massive custom CSS files or custom CSS class selectors.
 - Use components when the project benefits from them.
 - Use exactly one default export per component.
 - Use valid JSX.
@@ -873,7 +873,9 @@ Your job is to plan a comprehensive, modular file structure for a premium React 
 
 RULES:
 - Always include /App.js as the main entry point (which imports and renders all section components).
-- Always include /styles.css for global CSS (Google Fonts, CSS custom variables, keyframe animations, utility classes, and custom component styles).
+- Optional /styles.css is strictly MINIMAL (under 25 lines) ONLY for Google Fonts @import and base body styling.
+- ALL component and section styling MUST be done directly inside each component's JSX using inline Tailwind CSS classes (className="...").
+- NEVER plan or write component-level CSS inside /styles.css.
 - Break the website into modular components (e.g. /components/Navbar.js, /components/Hero.js, /components/Features.js, /components/Showcase.js, /components/Footer.js).
 - Create between 4 to 8 files for proper visual separation and modularity. Do NOT cram everything into App.js!
 - Each component file must have a clear path, description of purpose, what it exports, and what it imports.
@@ -881,9 +883,9 @@ RULES:
 - Do NOT plan test files or unnecessary config boilerplate.
 
 IMPORTANT:
-- /App.js imports ./styles.css and all planned section components.
-- /styles.css contains full styling for every component, keyframe animations, responsive media queries, and root variables.
-- All components use className (not class) for JSX.
+- /App.js imports ./styles.css (if present) and all planned section components.
+- All components use className with inline Tailwind CSS utility classes for JSX styling.
+- Do NOT create a large stylesheet.
 `;
 
 
@@ -928,8 +930,8 @@ GENERAL RULES:
 - Do NOT invent new API endpoints or environment variables.
 - Do NOT introduce TypeScript into a JavaScript project.
 - Do NOT import packages that are not in the project's package.json.
-- If the user asks for visual improvements, apply them consistently across the file.
-- Ensure CSS changes use className in JSX and update /styles.css if needed.
+- If the user asks for visual improvements, apply them using inline Tailwind CSS classes in JSX className.
+- Do NOT generate large custom CSS stylesheets.
 - Make sure the result compiles and runs without errors.
 `;
 
@@ -975,60 +977,42 @@ export function buildFileCodeSystem(allFiles, alreadyGeneratedFiles) {
     }
   }
 
-  // ---- CSS-specific extra rules ----
-  const cssRules = `
+  // ---- Tailwind CSS generation rules ----
+  const tailwindRules = `
 ============================================================
-CSS GENERATION RULES — EXTREMELY IMPORTANT
+TAILWIND CSS GENERATION RULES — EXTREMELY IMPORTANT
 ============================================================
 
-When generating /styles.css:
-
-1. ALWAYS start with a Google Fonts @import.
-   Choose a premium font pairing appropriate for the project.
+1. Tailwind CSS CDN is loaded and active in the preview.
+2. ALL component styling MUST be done using Tailwind CSS utility classes directly inside JSX className attributes.
+3. DO NOT write or invent custom CSS class names (such as .hero-title, .features-grid, .btn-primary).
+   Instead, style every element directly with Tailwind:
    Example:
-   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+   <button className="px-6 py-3 rounded-full bg-violet-600 hover:bg-violet-500 text-white font-medium shadow-lg shadow-violet-500/25 transition-all duration-200">
 
-2. ALWAYS define CSS custom properties (variables) in :root including at minimum:
-   --color-bg, --color-surface, --color-primary, --color-primary-hover,
-   --color-text, --color-text-muted, --color-border,
-   --font-sans, --font-display,
-   --radius-sm, --radius-md, --radius-lg,
-   --shadow-sm, --shadow-md, --shadow-lg,
-   --transition-fast, --transition-base
+4. Use rich, modern Tailwind utilities:
+   - Layout & Grid: flex, grid, grid-cols-1 md:grid-cols-3, gap-8, items-center, justify-between, max-w-7xl, mx-auto
+   - Spacing: p-6, px-8, py-16, md:py-24, mb-6
+   - Modern Aesthetics: bg-slate-950, text-slate-100, border border-white/10, backdrop-blur-lg, bg-white/5
+   - Gradients: bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600
+   - Typography: text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight
+   - Interactive: hover:scale-[1.02], hover:border-violet-500/50, transition-all duration-300
+   - Responsive design: sm:*, md:*, lg:*, xl:*
 
-3. ALWAYS include a proper CSS reset:
-   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+5. When generating /styles.css:
+   Keep it STRICTLY MINIMAL (maximum 20-30 lines).
+   It should ONLY contain:
+   - Google Fonts @import
+   - Base body font-family and smooth scrolling
+   Example /styles.css:
+   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
    html { scroll-behavior: smooth; }
-   body { font-family: var(--font-sans); background: var(--color-bg); color: var(--color-text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+   body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 
-4. ALWAYS define keyframe animations: fadeIn, slideUp, scaleIn (add more as appropriate).
-
-5. Define reusable utility classes:
-   .container (max-width + auto margins + padding)
-   .btn, .btn-primary, .btn-secondary (premium styles with hover/active/focus states)
-   .section (vertical padding)
-   .sr-only (screen reader only)
-
-6. Define component-level CSS for EVERY component in the project.
-   Do NOT rely solely on inline styles in JSX.
-
-7. Full responsiveness via media queries:
-   Mobile: max-width 768px
-   Tablet: max-width 1024px
-
-8. Hover and focus states must be defined for all interactive elements.
-
-9. ALWAYS include:
-   @media (prefers-reduced-motion: reduce) {
-     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-   }
-
-10. DO NOT generate an empty or minimal styles.css.
-    The CSS must be comprehensive and production-quality.
-    It must make the website look PREMIUM without any additional inline styling.
+   DO NOT define component-level CSS in /styles.css. All styling belongs directly in JSX!
 `;
 
-  parts.push(cssRules);
+  parts.push(tailwindRules);
 
   return parts.join("\n\n");
 }

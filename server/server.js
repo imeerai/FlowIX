@@ -11,6 +11,16 @@ import projectRouter from "./routes/projectRoutes.js";
 const app = express();
 await connectDB();
 
+// Ensure database is connected on requests
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 const allowedOrigins = (process.env.ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())
@@ -21,8 +31,14 @@ app.use(helmet());
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin))
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes("*") ||
+        (origin.endsWith(".vercel.app") && process.env.ALLOW_VERCEL_PREVIEWS !== "false")
+      ) {
         return callback(null, true);
+      }
       return callback(new Error("Origin not allowed"));
     },
     credentials: true,
@@ -54,8 +70,11 @@ app.use(
   }),
 );
 
-app.get("/", (req, res) => {
-  res.send("server is live!!!");
+app.get("/", (_req, res) => {
+  res.json({
+    status: "success",
+    message: "FlowIX Server is live and running!",
+  });
 });
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectRouter);
@@ -72,7 +91,7 @@ app.use((err, _req, res, _next) => {
 
 const PORT = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Backend server is running on http://localhost:${PORT}`);
   });

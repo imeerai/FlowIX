@@ -208,7 +208,7 @@ export async function generateProject(prompt, callbacks) {
     plan.files.push({
       path: "/styles.css",
       description:
-        "Global CSS: Google Fonts @import, :root CSS custom properties (color-bg, color-surface, color-primary, color-text, color-border, font-sans, radius, shadow, transition variables), full CSS reset (box-sizing, margin, padding, scroll-behavior, antialiased text), keyframe animations (fadeIn, slideUp, scaleIn), reusable utility classes (container, btn-primary, btn-secondary, section), component-level styles for EVERY component in the project, responsive media queries for mobile (768px) and tablet (1024px), hover/focus/active states for all interactive elements, and prefers-reduced-motion support. The CSS must be comprehensive and production-quality.",
+        "Minimal base CSS: Google Fonts @import and body font styling (under 25 lines). All UI styling must use inline Tailwind CSS classes in JSX.",
       exports: "none",
       imports: [],
     });

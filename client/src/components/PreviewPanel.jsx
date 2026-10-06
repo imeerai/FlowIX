@@ -189,6 +189,7 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
         options={{
           autorun: true,
           initMode: "immediate",
+          externalResources: ["https://cdn.tailwindcss.com"],
           classes: {
             "sp-wrapper": "sp-wrapper",
             "sp-layout": "sp-layout",

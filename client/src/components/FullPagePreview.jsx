@@ -102,6 +102,7 @@ const FullPagePreview = ({ files }) => {
         options={{
           autorun: true,
           initMode: "immediate",
+          externalResources: ["https://cdn.tailwindcss.com"],
           logLevel: 0,
         }}
         className="h-full w-full"
