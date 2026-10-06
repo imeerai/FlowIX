@@ -10,7 +10,6 @@ import { detectDependencies } from "../utils/sandpackUtils";
 import SandPackErrorMonitor from "./SandPackErrorMonitor";
 import { useAppContext } from "../context/AppContext";
 import { Loader2, RefreshCw } from "lucide-react";
-import BrandWatermark from "./BrandWatermark";
 
 //watches for file edit inside sandpack editor and saves changes to DB and live state
 function SandpackFileWatcher({ onLiveFilesChange }) {
@@ -54,8 +53,7 @@ function SandpackRuntimeStatus({ onRetry }) {
   const [timedOut, setTimedOut] = useState(false);
   const status = sandpack.status;
   const isReady = status === "done";
-  const hasError =
-    Boolean(sandpack.error) || status === "error" || status === "timeout";
+  const hasError = status === "timeout";
   const runtimeError = sandpack.error?.message;
 
   useEffect(() => {
@@ -71,6 +69,8 @@ function SandpackRuntimeStatus({ onRetry }) {
   if (isReady && !hasError) return null;
 
   const showTimeout = timedOut || hasError;
+
+  if (!showTimeout) return null;
 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 p-6">
@@ -195,7 +195,6 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
             "sp-preview": "sp-preview",
           },
           logLevel: 0,
-          experimental_enableServiceWorker: true,
         }}
         theme={{
           colors: {
@@ -218,9 +217,6 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
           },
         }}
       >
-        <SandpackRuntimeStatus
-          onRetry={() => setRuntimeKey((key) => key + 1)}
-        />
         {!readOnly && (
           <SandpackFileWatcher onLiveFilesChange={handleLiveFilesChange} />
         )}
@@ -252,7 +248,6 @@ const PreviewPanel = ({ project, activeFile, showCode, readOnly = false }) => {
           />
         </SandpackLayout>
       </SandpackProvider>
-      <BrandWatermark />
     </div>
   );
 };

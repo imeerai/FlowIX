@@ -12,7 +12,6 @@ import PreviewPanel from "../components/PreviewPanel";
 import AgentProgressDashboard from "../components/AgentProgressDashboard";
 import PublishModal from "../components/PublishModal";
 import { exportProjectZip } from "../utils/exportProject";
-import { getProjectLimitMessage } from "../utils/projectLimits";
 
 /** Loads the route's project and renders the builder once it is available. */
 const BuilderPage = () => {
@@ -71,8 +70,6 @@ const BuilderPage = () => {
     return <Loading />;
   }
 
-  const projectLimitMessage = getProjectLimitMessage(activeProject.files);
-
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden text-zinc-900 relative">
       {/* TOP BAR header */}
@@ -117,7 +114,14 @@ const BuilderPage = () => {
                 onSend={handleChat}
                 onCancel={cancelRequest}
                 loading={chatLoading}
-                disabledMessage={projectLimitMessage}
+                disabledMessage={
+                  activeProject.status === "failed"
+                    ? "Generation failed after retries. Click 'Retry Generation' to try again."
+                    : activeProject.status === "generating" ||
+                        activeProject.status === "pending"
+                      ? "AI is building project files..."
+                      : ""
+                }
               />
             ) : (
               <FileExplorer

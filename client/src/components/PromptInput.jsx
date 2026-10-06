@@ -59,10 +59,10 @@ const PromptInput = ({
       </div>
       {disabledMessage && (
         <div
-          className="border-t border-amber-100 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-700"
+          className="border-t border-amber-100 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold tracking-wider text-amber-800"
           role="status"
         >
-          Limit reached
+          {disabledMessage}
         </div>
       )}
     </div>

@@ -3,16 +3,28 @@ import {
   CircleIcon,
   Clock3,
   Loader2Icon,
+  RefreshCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useAppContext } from "../context/AppContext";
 
 export default function AgentProgressDashboard({ project }) {
+  const { id } = useParams();
+  const { retryGeneration } = useAppContext();
+  const [retrying, setRetrying] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const planned = project.filesPlanned || [];
   const completed = project.filesGenerated || [];
   const current = project.currentFile;
+  const currentOperation = project.currentOperation;
   const isFailed = project.status === "failed";
   const isRevision = project.status === "revising";
+  const rawProgress = planned.length
+    ? Math.round((completed.length / planned.length) * 100)
+    : 0;
+  const progress =
+    isRevision && current ? Math.min(rawProgress, 99) : rawProgress;
 
   useEffect(() => {
     const startedAt = Date.now();
@@ -65,23 +77,42 @@ export default function AgentProgressDashboard({ project }) {
               <br />
               npm run dev
             </code>
+            {(project.messages || []).filter((m) =>
+              m.content?.includes("Retrying project generation"),
+            ).length >= 2 ? (
+              <div className="mt-2 rounded bg-amber-100/80 p-2 text-xs font-semibold text-amber-900">
+                Maximum retry limit reached (2/2 retries used). Further retries stopped.
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={retrying}
+                onClick={async () => {
+                  setRetrying(true);
+                  await retryGeneration(id || project._id);
+                  setRetrying(false);
+                }}
+                className="mt-1 flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors"
+              >
+                <RefreshCw size={13} className={retrying ? "animate-spin" : ""} />
+                {retrying ? "Retrying..." : "Retry Generation"}
+              </button>
+            )}
           </div>
         )}
 
         {/* Progress bar */}
-        {planned.length > 0 && !isFailed && !isRevision && (
+        {planned.length > 0 && !isFailed && (
           <div className="mb-6">
             <div className="flex justify-between text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-              <span>Progress</span>
-              <span>
-                {Math.round((completed.length / planned.length) * 100)}%
-              </span>
+              <span>{isRevision ? "Applying changes" : "Progress"}</span>
+              <span>{progress}%</span>
             </div>
             <div className="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-zinc-700 transition-all duration-500 ease-out"
                 style={{
-                  width: `${(completed.length / planned.length) * 100}%`,
+                  width: `${progress}%`,
                 }}
               />
             </div>
@@ -89,24 +120,11 @@ export default function AgentProgressDashboard({ project }) {
         )}
 
         {/* Files checklist */}
-        {isRevision ? (
-          <div className="flex flex-col items-center justify-center py-10 text-zinc-400 text-center">
-            <Loader2Icon
-              size={26}
-              className="animate-spin mb-3 text-zinc-700"
-            />
-            <p className="text-sm text-zinc-700 font-medium">
-              Applying your update
-            </p>
-            <p className="text-xs mt-1 max-w-sm">
-              The AI is updating only the files needed for your request. This
-              usually takes a few seconds.
-            </p>
-          </div>
-        ) : planned.length > 0 ? (
+        {planned.length > 0 ? (
           <div>
             <span className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-widest mb-3">
-              Planned Files ({completed.length}/{planned.length})
+              {isRevision ? "Revision Files" : "Planned Files"} (
+              {completed.length}/{planned.length})
             </span>
             <div className="space-y-2.5 max-h-75 overflow-y-auto pr-1">
               {planned.map((file) => {
@@ -147,7 +165,9 @@ export default function AgentProgressDashboard({ project }) {
                         {file.path}
                       </p>
                       <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                        {file.description}
+                        {isRevision && file.path === current
+                          ? `${currentOperation || "apply"} operation in progress`
+                          : file.description}
                       </p>
                     </div>
                     {isGenerating && (

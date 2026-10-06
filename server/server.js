@@ -73,7 +73,9 @@ app.use((err, _req, res, _next) => {
 const PORT = process.env.PORT || 5000;
 
 if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT);
+  app.listen(PORT, () => {
+    console.log(`Backend server is running on http://localhost:${PORT}`);
+  });
 }
 
 export default app;

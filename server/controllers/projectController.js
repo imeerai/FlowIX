@@ -1,7 +1,6 @@
 import Project from "../models/Project.js";
 import crypto from "crypto";
 import { generateProject } from "../services/ai.js";
-import { getProjectLimitError } from "../services/projectLimits.js";
 import { rejectInvalidProjectId } from "../utils/projectRequest.js";
 import { validatePrompt } from "../utils/validation.js";
 
@@ -65,6 +64,7 @@ export async function createProject(req, res) {
     filesPlanned: project.filesPlanned,
     filesGenerated: project.filesGenerated,
     currentFile: project.currentFile,
+    currentOperation: project.currentOperation,
     error: project.error,
     createdAt: project.createdAt,
   });
@@ -135,13 +135,35 @@ async function runBackgroundGeneration(projectId, prompt) {
       await project.save();
     }
   } catch (error) {
+    const rawErrorStr = [
+      error?.message,
+      error?.cause?.message,
+      error?.lastError?.message,
+      ...(error?.errors || []).map((e) => e?.message),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const userMessage =
+      rawErrorStr.includes("rate limit") ||
+      rawErrorStr.includes("429") ||
+      rawErrorStr.includes("quota")
+        ? "OpenRouter API rate limit reached. Please wait 1-2 minutes before trying again."
+        : rawErrorStr.includes("API key") || rawErrorStr.includes("401")
+          ? "Invalid OpenRouter API key. Please check OPENROUTER_API_KEY in .env."
+          : rawErrorStr.includes("structured output") || rawErrorStr.includes("JSON")
+            ? "AI model error: Failed to parse structured output. Please retry."
+            : rawErrorStr.includes("timeout") || rawErrorStr.includes("network")
+              ? "Network timeout. Please check your connection and try again."
+              : error?.message || "Project generation failed. Please try again.";
+
     await Project.findByIdAndUpdate(projectId, {
       status: "failed",
-      error: "Project generation failed. Please try again.",
+      error: userMessage,
       $push: {
         messages: {
           role: "assistant",
-          content: "Project generation failed. Please try again.",
+          content: userMessage,
           timestamp: new Date(),
         },
       },
@@ -205,9 +227,10 @@ export async function getProjectDetails(req, res) {
     filesPlanned: project.filesPlanned,
     filesGenerated: project.filesGenerated,
     currentFile: project.currentFile,
+    currentOperation: project.currentOperation,
     error:
       project.status === "failed"
-        ? "Project generation failed. Please try again."
+        ? project.error || "Project generation failed. Please try again."
         : null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
@@ -249,14 +272,6 @@ export async function updateProjectFiles(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   if (rejectInvalidProjectId(req, res)) return;
-
-  const limitError = getProjectLimitError(files);
-  if (limitError) {
-    return res.status(413).json({
-      error: limitError,
-      code: "PROJECT_LIMIT_REACHED",
-    });
-  }
 
   const project = await Project.findOne({
     _id: req.params.id,
@@ -367,5 +382,86 @@ export async function getPublicProject(req, res) {
     version: project.version,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
+  });
+}
+
+// POST /api/projects/:id/retry
+// Retry a failed project generation with the original prompt
+
+export async function retryProject(req, res) {
+  if (!req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (rejectInvalidProjectId(req, res)) return;
+
+  const project = await Project.findOne({
+    _id: req.params.id,
+    owner: req.user.userId,
+    status: "failed",
+  });
+
+  if (!project) {
+    return res
+      .status(404)
+      .json({ error: "Project not found or not in failed state" });
+  }
+
+  // Check retry limit (max 2 manual retries allowed)
+  const retryAttempts = (project.messages || []).filter((m) =>
+    m.content?.includes("Retrying project generation"),
+  ).length;
+
+  if (retryAttempts >= 2) {
+    return res.status(429).json({
+      error: "Maximum retry limit reached (2 retries). Generation stopped.",
+    });
+  }
+
+  // Use original prompt from first user message
+  const originalPrompt =
+    project.messages.find((m) => m.role === "user")?.content ||
+    project.description;
+
+  if (!originalPrompt || originalPrompt.trim().length < 3) {
+    return res
+      .status(400)
+      .json({ error: "Cannot find original prompt to retry" });
+  }
+
+  // Reset project state for retry
+  project.status = "pending";
+  project.error = null;
+  project.files = {};
+  project.filesPlanned = [];
+  project.filesGenerated = [];
+  project.currentFile = null;
+  project.currentOperation = null;
+  project.version = 0;
+  project.name = "Planning Project........";
+  project.messages.push({
+    role: "assistant",
+    content: "Retrying project generation...",
+    timestamp: new Date(),
+  });
+
+  project.markModified("files");
+  await project.save();
+
+  // Re-run background generation
+  runBackgroundGeneration(project._id.toString(), originalPrompt).catch(
+    async () => {
+      await Project.findByIdAndUpdate(project._id, {
+        status: "failed",
+        error: "Project generation failed. Please try again.",
+        currentFile: null,
+      });
+    },
+  );
+
+  res.json({
+    _id: project._id,
+    name: project.name,
+    status: project.status,
+    message: "Retry started successfully",
   });
 }

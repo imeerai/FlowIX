@@ -7,6 +7,7 @@ import {
   updateProjectFiles,
   publishProject,
   getPublicProject,
+  retryProject,
 } from "../controllers/projectController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { chat } from "../controllers/chatContoller.js";
@@ -28,5 +29,8 @@ projectRouter.post("/:id/publish", publishProject);
 
 //chat
 projectRouter.post("/:id/chat", chat);
+
+// retry failed project generation
+projectRouter.post("/:id/retry", retryProject);
 
 export default projectRouter;

@@ -79,6 +79,10 @@ const ProjectSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    currentOperation: {
+      type: String,
+      default: null,
+    },
     error: {
       type: String,
       default: null,
